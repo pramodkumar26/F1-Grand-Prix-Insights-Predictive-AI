@@ -1,0 +1,21 @@
+DriverNumber,BroadcastName,Abbreviation,DriverId,TeamName,TeamColor,TeamId,FirstName,LastName,FullName,HeadshotUrl,CountryCode,Position,ClassifiedPosition,GridPosition,Q1,Q2,Q3,Time,Status,Points,Laps
+77,V BOTTAS,BOT,bottas,Mercedes,00d2be,mercedes,Valtteri,Bottas,Valtteri Bottas,,,1.0,1,1.0,,,,0 days 01:31:52.942000,Finished,25.0,51.0
+44,L HAMILTON,HAM,hamilton,Mercedes,00d2be,mercedes,Lewis,Hamilton,Lewis Hamilton,,,2.0,2,2.0,,,,0 days 00:00:01.524000,Finished,18.0,51.0
+5,S VETTEL,VET,vettel,Ferrari,dc0000,ferrari,Sebastian,Vettel,Sebastian Vettel,,,3.0,3,3.0,,,,0 days 00:00:11.739000,Finished,15.0,51.0
+33,M VERSTAPPEN,VER,max_verstappen,Red Bull Racing,1e41ff,red_bull,Max,Verstappen,Max Verstappen,,,4.0,4,4.0,,,,0 days 00:00:17.493000,Finished,12.0,51.0
+16,C LECLERC,LEC,leclerc,Ferrari,dc0000,ferrari,Charles,Leclerc,Charles Leclerc,,,5.0,5,8.0,,,,0 days 00:01:09.107000,Finished,11.0,51.0
+11,S PEREZ,PER,perez,Racing Point,f596c8,racing_point,Sergio,Perez,Sergio Perez,,,6.0,6,5.0,,,,0 days 00:01:16.416000,Finished,8.0,51.0
+55,C SAINZ,SAI,sainz,McLaren,ff8700,mclaren,Carlos,Sainz,Carlos Sainz,,,7.0,7,9.0,,,,0 days 00:01:23.826000,Finished,6.0,51.0
+4,L NORRIS,NOR,norris,McLaren,ff8700,mclaren,Lando,Norris,Lando Norris,,,8.0,8,7.0,,,,0 days 00:01:40.268000,Finished,4.0,51.0
+18,L STROLL,STR,stroll,Racing Point,f596c8,racing_point,Lance,Stroll,Lance Stroll,,,9.0,9,13.0,,,,0 days 00:01:43.816000,Finished,2.0,51.0
+7,K RAIKKONEN,RAI,raikkonen,Alfa Romeo Racing,9b0000,alfa,Kimi,Räikkönen,Kimi Räikkönen,,,10.0,10,0.0,,,,,+1 Lap,1.0,50.0
+23,A ALBON,ALB,albon,Toro Rosso,469bff,toro_rosso,Alexander,Albon,Alexander Albon,,,11.0,11,11.0,,,,,+1 Lap,0.0,50.0
+99,A GIOVINAZZI,GIO,giovinazzi,Alfa Romeo Racing,9b0000,alfa,Antonio,Giovinazzi,Antonio Giovinazzi,,,12.0,12,17.0,,,,,+1 Lap,0.0,50.0
+20,K MAGNUSSEN,MAG,kevin_magnussen,Haas F1 Team,bd9e57,haas,Kevin,Magnussen,Kevin Magnussen,,,13.0,13,12.0,,,,,+1 Lap,0.0,50.0
+27,N HULKENBERG,HUL,hulkenberg,Renault,fff500,renault,Nico,Hulkenberg,Nico Hulkenberg,,,14.0,14,15.0,,,,,+1 Lap,0.0,50.0
+63,G RUSSELL,RUS,russell,Williams,ffffff,williams,George,Russell,George Russell,,,15.0,15,16.0,,,,,+2 Laps,0.0,49.0
+88,R KUBICA,KUB,kubica,Williams,ffffff,williams,Robert,Kubica,Robert Kubica,,,16.0,16,0.0,,,,,+2 Laps,0.0,49.0
+10,P GASLY,GAS,gasly,Red Bull Racing,1e41ff,red_bull,Pierre,Gasly,Pierre Gasly,,,17.0,R,0.0,,,,,Transmission,0.0,38.0
+8,R GROSJEAN,GRO,grosjean,Haas F1 Team,bd9e57,haas,Romain,Grosjean,Romain Grosjean,,,18.0,R,14.0,,,,,Brakes,0.0,38.0
+26,D KVYAT,KVY,kvyat,Toro Rosso,469bff,toro_rosso,Daniil,Kvyat,Daniil Kvyat,,,19.0,R,6.0,,,,,Collision,0.0,33.0
+3,D RICCIARDO,RIC,ricciardo,Renault,fff500,renault,Daniel,Ricciardo,Daniel Ricciardo,,,20.0,R,10.0,,,,,Collision,0.0,31.0

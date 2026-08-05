@@ -1,0 +1,21 @@
+DriverNumber,BroadcastName,Abbreviation,DriverId,TeamName,TeamColor,TeamId,FirstName,LastName,FullName,HeadshotUrl,CountryCode,Position,ClassifiedPosition,GridPosition,Q1,Q2,Q3,Time,Status,Points,Laps
+5,S VETTEL,VET,vettel,Ferrari,DC0000,ferrari,Sebastian,Vettel,Sebastian Vettel,,,1.0,1,1.0,,,,0 days 01:28:31.377000,Finished,25.0,68.0
+77,V BOTTAS,BOT,bottas,Mercedes,00D2BE,mercedes,Valtteri,Bottas,Valtteri Bottas,,,2.0,2,2.0,,,,0 days 00:00:07.376000,Finished,18.0,68.0
+33,M VERSTAPPEN,VER,max_verstappen,Red Bull Racing,1E41FF,red_bull,Max,Verstappen,Max Verstappen,,,3.0,3,3.0,,,,0 days 00:00:08.360000,Finished,15.0,68.0
+3,D RICCIARDO,RIC,ricciardo,Red Bull Racing,1E41FF,red_bull,Daniel,Ricciardo,Daniel Ricciardo,,,4.0,4,6.0,,,,0 days 00:00:20.892000,Finished,12.0,68.0
+44,L HAMILTON,HAM,hamilton,Mercedes,00D2BE,mercedes,Lewis,Hamilton,Lewis Hamilton,,,5.0,5,4.0,,,,0 days 00:00:21.559000,Finished,10.0,68.0
+7,K RAIKKONEN,RAI,raikkonen,Ferrari,DC0000,ferrari,Kimi,Räikkönen,Kimi Räikkönen,,,6.0,6,5.0,,,,0 days 00:00:27.184000,Finished,8.0,68.0
+27,N HULKENBERG,HUL,hulkenberg,Renault,FFF500,renault,Nico,Hulkenberg,Nico Hulkenberg,,,7.0,7,7.0,,,,,+1 Lap,6.0,67.0
+55,C SAINZ,SAI,sainz,Renault,FFF500,renault,Carlos,Sainz,Carlos Sainz,,,8.0,8,9.0,,,,,+1 Lap,4.0,67.0
+31,E OCON,OCO,ocon,Force India,F596C8,force_india,Esteban,Ocon,Esteban Ocon,,,9.0,9,8.0,,,,,+1 Lap,2.0,67.0
+16,C LECLERC,LEC,leclerc,Sauber,9B0000,sauber,Charles,Leclerc,Charles Leclerc,,,10.0,10,13.0,,,,,+1 Lap,1.0,67.0
+10,P GASLY,GAS,gasly,Toro Rosso,469BFF,toro_rosso,Pierre,Gasly,Pierre Gasly,,,11.0,11,16.0,,,,,+1 Lap,0.0,67.0
+8,R GROSJEAN,GRO,grosjean,Haas F1 Team,828282,haas,Romain,Grosjean,Romain Grosjean,,,12.0,12,20.0,,,,,+1 Lap,0.0,67.0
+20,K MAGNUSSEN,MAG,kevin_magnussen,Haas F1 Team,828282,haas,Kevin,Magnussen,Kevin Magnussen,,,13.0,13,11.0,,,,,+1 Lap,0.0,67.0
+11,S PEREZ,PER,perez,Force India,F596C8,force_india,Sergio,Perez,Sergio Perez,,,14.0,14,10.0,,,,,+1 Lap,0.0,67.0
+9,M ERICSSON,ERI,ericsson,Sauber,9B0000,sauber,Marcus,Ericsson,Marcus Ericsson,,,15.0,15,19.0,,,,,+2 Laps,0.0,66.0
+2,S VANDOORNE,VAN,vandoorne,McLaren,FF8700,mclaren,Stoffel,Vandoorne,Stoffel Vandoorne,,,16.0,16,15.0,,,,,+2 Laps,0.0,66.0
+35,S SIROTKIN,SIR,sirotkin,Williams,FFFFFF,williams,Sergey,Sirotkin,Sergey Sirotkin,,,17.0,17,18.0,,,,,+2 Laps,0.0,66.0
+14,F ALONSO,ALO,alonso,McLaren,FF8700,mclaren,Fernando,Alonso,Fernando Alonso,,,18.0,R,14.0,,,,,Exhaust,0.0,40.0
+28,B HARTLEY,HAR,brendon_hartley,Toro Rosso,469BFF,toro_rosso,Brendon,Hartley,Brendon Hartley,,,19.0,R,12.0,,,,,Collision,0.0,0.0
+18,L STROLL,STR,stroll,Williams,FFFFFF,williams,Lance,Stroll,Lance Stroll,,,20.0,R,17.0,,,,,Collision,0.0,0.0

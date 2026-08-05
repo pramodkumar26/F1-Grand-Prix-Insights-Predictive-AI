@@ -1,0 +1,21 @@
+DriverNumber,BroadcastName,Abbreviation,DriverId,TeamName,TeamColor,TeamId,FirstName,LastName,FullName,HeadshotUrl,CountryCode,Position,ClassifiedPosition,GridPosition,Q1,Q2,Q3,Time,Status,Points,Laps
+44,L HAMILTON,HAM,hamilton,Mercedes,00D2BE,mercedes,Lewis,Hamilton,Lewis Hamilton,,,1.0,1,14.0,,,,0 days 01:32:29.845000,Finished,25.0,67.0
+77,V BOTTAS,BOT,bottas,Mercedes,00D2BE,mercedes,Valtteri,Bottas,Valtteri Bottas,,,2.0,2,2.0,,,,0 days 00:00:04.535000,Finished,18.0,67.0
+7,K RAIKKONEN,RAI,raikkonen,Ferrari,DC0000,ferrari,Kimi,Räikkönen,Kimi Räikkönen,,,3.0,3,3.0,,,,0 days 00:00:06.732000,Finished,15.0,67.0
+33,M VERSTAPPEN,VER,max_verstappen,Red Bull Racing,1E41FF,red_bull,Max,Verstappen,Max Verstappen,,,4.0,4,4.0,,,,0 days 00:00:07.654000,Finished,12.0,67.0
+27,N HULKENBERG,HUL,hulkenberg,Renault,FFF500,renault,Nico,Hulkenberg,Nico Hulkenberg,,,5.0,5,7.0,,,,0 days 00:00:26.609000,Finished,10.0,67.0
+8,R GROSJEAN,GRO,grosjean,Haas F1 Team,828282,haas,Romain,Grosjean,Romain Grosjean,,,6.0,6,6.0,,,,0 days 00:00:28.871000,Finished,8.0,67.0
+11,S PEREZ,PER,perez,Force India,F596C8,force_india,Sergio,Perez,Sergio Perez,,,7.0,7,10.0,,,,0 days 00:00:30.556000,Finished,6.0,67.0
+31,E OCON,OCO,ocon,Force India,F596C8,force_india,Esteban,Ocon,Esteban Ocon,,,8.0,8,15.0,,,,0 days 00:00:31.750000,Finished,4.0,67.0
+9,M ERICSSON,ERI,ericsson,Sauber,9B0000,sauber,Marcus,Ericsson,Marcus Ericsson,,,9.0,9,13.0,,,,0 days 00:00:32.362000,Finished,2.0,67.0
+28,B HARTLEY,HAR,brendon_hartley,Toro Rosso,469BFF,toro_rosso,Brendon,Hartley,Brendon Hartley,,,10.0,10,17.0,,,,0 days 00:00:34.197000,Finished,1.0,67.0
+20,K MAGNUSSEN,MAG,kevin_magnussen,Haas F1 Team,828282,haas,Kevin,Magnussen,Kevin Magnussen,,,11.0,11,5.0,,,,0 days 00:00:34.919000,Finished,0.0,67.0
+55,C SAINZ,SAI,sainz,Renault,FFF500,renault,Carlos,Sainz,Carlos Sainz,,,12.0,12,8.0,,,,0 days 00:00:43.069000,Finished,0.0,67.0
+2,S VANDOORNE,VAN,vandoorne,McLaren,FF8700,mclaren,Stoffel,Vandoorne,Stoffel Vandoorne,,,13.0,13,19.0,,,,0 days 00:00:46.617000,Finished,0.0,67.0
+10,P GASLY,GAS,gasly,Toro Rosso,469BFF,toro_rosso,Pierre,Gasly,Pierre Gasly,,,14.0,14,16.0,,,,,+1 Lap,0.0,66.0
+16,C LECLERC,LEC,leclerc,Sauber,9B0000,sauber,Charles,Leclerc,Charles Leclerc,,,15.0,15,9.0,,,,,+1 Lap,0.0,66.0
+14,F ALONSO,ALO,alonso,McLaren,FF8700,mclaren,Fernando,Alonso,Fernando Alonso,,,16.0,16,11.0,,,,,Retired,0.0,65.0
+18,L STROLL,STR,stroll,Williams,FFFFFF,williams,Lance,Stroll,Lance Stroll,,,17.0,R,18.0,,,,,Engine,0.0,53.0
+5,S VETTEL,VET,vettel,Ferrari,DC0000,ferrari,Sebastian,Vettel,Sebastian Vettel,,,18.0,R,1.0,,,,,Accident,0.0,51.0
+35,S SIROTKIN,SIR,sirotkin,Williams,FFFFFF,williams,Sergey,Sirotkin,Sergey Sirotkin,,,19.0,R,12.0,,,,,Engine,0.0,51.0
+3,D RICCIARDO,RIC,ricciardo,Red Bull Racing,1E41FF,red_bull,Daniel,Ricciardo,Daniel Ricciardo,,,20.0,R,20.0,,,,,Engine,0.0,27.0

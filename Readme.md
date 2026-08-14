@@ -1,12 +1,13 @@
 # Grand Prix Insights
 
 This is a Formula 1 data project where I pull real race data from 2018 to
-2025 and use it to build machine learning models. The end goal is to
-predict things like who finishes on the podium, how tyres wear down over a
-race, how one teammate compares to another, and whether a pit stop
-decision was actually a good call. On top of the models, there's a chatbot
-that answers questions using the model outputs, not just general
-knowledge.
+2025 and use it to build machine learning models. The end goal is five
+models: who finishes on the podium, how tyres wear down over a race, how
+one teammate compares to another, whether a pit stop decision was
+actually a good call, and how much a driver's race outcome shifted from
+what their grid position alone would predict. On top of the models,
+there's a chatbot that answers questions using the model outputs, not
+just general knowledge.
 
 ## What the data looks like
 

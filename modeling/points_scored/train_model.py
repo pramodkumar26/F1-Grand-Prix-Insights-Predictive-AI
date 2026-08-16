@@ -28,8 +28,6 @@ def train_baseline(X_train, y_train, X_test):
 
 
 def train_primary(X_train, y_train, X_val, y_val, X_test):
-    # same walk-forward validated hyperparameters as strategy_shift/podium, shallow
-    # trees, early stopping on a held out validation slice instead of a fixed tree count
     model = XGBRegressor(
         random_state=42, max_depth=3, n_estimators=500, learning_rate=0.03,
         subsample=0.8, colsample_bytree=1.0, reg_lambda=1.0,

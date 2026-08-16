@@ -38,7 +38,7 @@ def train_primary(X_train, y_train, X_val, y_val, X_test):
     return model, model.predict(X_test)
 
 
-BLEND_WEIGHT_LINEAR = 0.6  # selected on the 2023 validation slice, see model_log.md
+BLEND_WEIGHT_LINEAR = 0.6
 
 
 def report(name, y_true, y_pred):
@@ -72,9 +72,6 @@ def main():
     baseline_model, baseline_pred = train_baseline(X_train, y_train, X_test)
     primary_model, primary_pred = train_primary(X_train, y_train, X_val, y_val, X_test)
 
-    # blend weight was selected on the validation set in a separate run, not here, to
-    # avoid ever touching the test set during model selection. Fixed at 0.6 (linear) /
-    # 0.4 (xgboost) once chosen. See model_log.md for the selection run.
     blend_pred = BLEND_WEIGHT_LINEAR * baseline_pred + (1 - BLEND_WEIGHT_LINEAR) * primary_pred
 
     print()

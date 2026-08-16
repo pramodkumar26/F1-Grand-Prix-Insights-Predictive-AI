@@ -7,8 +7,7 @@ FEATURES = ['grid_position', 'team_strength', 'driver_form', 'qualifying_pace_de
 
 
 def compute_vif(X):
-    # VIF_i = 1 / (1 - R2_i), R2_i from regressing feature i on every other feature.
-    # VIF > 5 is the usual flag for concerning collinearity, > 10 is severe.
+    # VIF > 5 flags concerning collinearity, > 10 is severe
     vifs = {}
     for col in X.columns:
         y = X[col]

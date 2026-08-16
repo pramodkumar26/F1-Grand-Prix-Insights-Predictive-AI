@@ -16,8 +16,7 @@ def load_pairs(conn):
 
 
 def load_results(conn):
-    # "Lapped" is FastF1's post-2023 spelling of "+1 Lap", a finisher. See
-    # feature_engineering/build_dnf_rate.py for why omitting it corrupts era comparisons.
+    # "Lapped" is FastF1's post-2023 label for a finisher, same as "+1 Lap"
     res = pd.read_sql("""
         SELECT race_id, driver_id, grid_position, finish_position, status
         FROM fact_race_results
@@ -29,10 +28,7 @@ def load_results(conn):
 
 
 def head_to_head(pairs, results, col, require_finish, out_prefix):
-    # Fairness rule: a head to head only counts when BOTH drivers produced a comparable
-    # result. If a teammate retired with a mechanical failure, finishing ahead of them
-    # says nothing about relative skill, so that race is excluded rather than scored as
-    # a win. Same logic for qualifying, both must have set a valid time.
+    # only counts when both drivers produced a comparable result
     own = results[['race_id', 'driver_id', col, 'finished']].rename(
         columns={'driver_id': 'd', col: 'own', 'finished': 'own_fin'})
     mate = results[['race_id', 'driver_id', col, 'finished']].rename(

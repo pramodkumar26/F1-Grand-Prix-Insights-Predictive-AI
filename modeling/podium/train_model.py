@@ -30,8 +30,6 @@ def train_baseline(X_train, y_train, X_test):
 
 
 def train_primary(X_train, y_train, X_val, y_val, X_test):
-    # same regularization approach as strategy_shift's xgboost, shallow trees plus early
-    # stopping on a held out validation slice instead of a fixed tree count
     model = XGBClassifier(
         random_state=42,
         max_depth=3,

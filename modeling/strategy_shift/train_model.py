@@ -19,9 +19,6 @@ def load_data(conn):
 
 
 def chronological_split(df):
-    # carves a validation slice out of the training range, strictly before test,
-    # so xgboost can early-stop on unseen data instead of overfitting the full
-    # training set with a fixed n_estimators
     train = df[df['year'] <= 2022].copy()
     val = df[df['year'] == 2023].copy()
     test = df[df['year'] >= 2024].copy()
@@ -38,8 +35,6 @@ def train_baseline(X_train, y_train, X_test):
 
 
 def train_primary(X_train, y_train, X_val, y_val, X_test):
-    # shallow trees, subsampling, and early stopping on a held-out validation slice,
-    # defaults were overfitting hard enough that plain linear regression won on the test set
     model = XGBRegressor(
         random_state=42,
         max_depth=3,

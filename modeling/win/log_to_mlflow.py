@@ -1,7 +1,3 @@
-"""Logs the existing win model into MLflow tracking + registry, same pattern as
-podium/log_to_mlflow.py. Imports train_primary() directly rather than retraining
-a separate copy, so the registered model matches model_log.md exactly.
-"""
 import sqlite3
 import mlflow
 import mlflow.xgboost

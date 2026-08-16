@@ -18,14 +18,9 @@ def main():
     X_val, y_val = val[FEATURES], val[TARGET]
     X_test, y_test = test[FEATURES], test[TARGET]
 
-    # same fitted model train_model.py reports accuracy/precision/recall/F1/ROC-AUC for
     model, _, proba = train_primary(X_train, y_train, X_val, y_val, X_test)
 
-    # tree_path_dependent explains in log-odds (margin) space, the exact additive
-    # decomposition xgboost's trees support natively. Converting to probability isn't
-    # additive, so these SHAP values are log-odds contributions, not probability points
-    # directly. predict_proba (sigmoid of the margin) is used separately below for the
-    # worked example, so the printed number is the one that's actually interpretable.
+    # SHAP values here are in log-odds space, not probability
     explainer = shap.TreeExplainer(model)
     shap_values = explainer(X_test)
 
@@ -47,8 +42,6 @@ def main():
     plt.savefig(f'{PLOTS_DIR}/shap_bar.png', dpi=180, bbox_inches='tight')
     plt.close()
 
-    # worked example: the test row the model is most confident is a podium finish,
-    # so the explanation walks through a case with a real, readable story
     example_idx = int(np.argmax(proba))
     plt.figure()
     shap.plots.waterfall(shap_values[example_idx], show=False)

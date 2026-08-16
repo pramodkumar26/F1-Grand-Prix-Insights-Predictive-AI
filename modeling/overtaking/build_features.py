@@ -20,14 +20,8 @@ def build_overtaking_features_table():
     overtakes = pd.read_sql("SELECT race_id, driver_id, overtakes_made FROM overtakes_made", conn)
     trailing = pd.read_sql("SELECT race_id, driver_id, driver_overtake_trailing FROM driver_overtake_trailing", conn)
     strength = pd.read_sql("SELECT DISTINCT race_id, team_id, team_strength FROM team_strength", conn)
-    # pre-race safe qualifying features, already validated in podium/points_scored,
-    # tested here for whether race pace context adds anything beyond grid + trailing skill
     quali = pd.read_sql("SELECT race_id, driver_id, qualifying_pace_delta FROM qualifying_pace_delta", conn)
     gap = pd.read_sql("SELECT race_id, driver_id, qualifying_gap_to_pole FROM qualifying_gap_to_pole", conn)
-    # circuit's physical overtaking character (straights, corner count), strictly prior
-    # races at that circuit. Tested and adopted, R2 0.171 -> 0.203. Null for a circuit's
-    # first race in the dataset (e.g. Las Vegas 2023), left null rather than imputed
-    # here, train_model.py's median fill handles it consistently with every other gap.
     circuit_trailing = pd.read_sql("SELECT race_id, circuit_overtake_trailing FROM circuit_overtake_trailing", conn)
 
     table = results.merge(overtakes, on=['race_id', 'driver_id'], how='inner')

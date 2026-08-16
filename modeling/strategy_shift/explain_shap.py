@@ -17,14 +17,8 @@ def main():
     X_val, y_val = val[FEATURES], val[TARGET]
     X_test, y_test = test[FEATURES], test[TARGET]
 
-    # same fitted model train_model.py reports MAE/RMSE/R2 for, not a separate copy
     model, _ = train_primary(X_train, y_train, X_val, y_val, X_test)
 
-    # explained against the test set, 2024-2025, the same untouched seasons every metric
-    # in model_log.md is reported against, so "why" and "how accurate" describe the same
-    # predictions. tree_path_dependent (TreeExplainer's default for xgboost) reads missing
-    # value handling straight off the trained trees, no separate imputation needed, same
-    # nulls xgboost was already trained on.
     explainer = shap.TreeExplainer(model)
     shap_values = explainer(X_test)
 
@@ -46,8 +40,6 @@ def main():
     plt.savefig(f'{PLOTS_DIR}/shap_bar.png', dpi=180, bbox_inches='tight')
     plt.close()
 
-    # single example waterfall: the test row with the largest actual positions_gained,
-    # so the explanation has a real story to tell instead of a near zero shuffle
     example_idx = y_test.reset_index(drop=True).abs().idxmax()
     plt.figure()
     shap.plots.waterfall(shap_values[example_idx], show=False)

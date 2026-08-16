@@ -5,9 +5,6 @@ DB_PATH = 'f1.db'
 
 
 def load_results(conn):
-    # every driver who started the race. points is 0 for anyone outside the top 10,
-    # including DNFs, so no filtering is needed the way strategy_shift needed one for
-    # positions_gained, points is always defined once a driver is on the grid.
     query = """
         SELECT r.race_id, r.driver_id, r.team_id, r.grid_position, r.points, d.year
         FROM fact_race_results r
@@ -21,10 +18,6 @@ def build_points_features_table():
     conn = sqlite3.connect(DB_PATH)
 
     results = load_results(conn)
-    # same pre-race-safe feature set validated for podium_features.py, only information
-    # knowable after qualifying, before the race starts. No pit_stop_delta, no
-    # primary_degradation_rate, no track_difficulty_index, no is_wet_race, all four are
-    # computed from that race's own events and would leak the outcome into a forecast.
     strength = pd.read_sql("SELECT DISTINCT race_id, team_id, team_strength FROM team_strength", conn)
     form = pd.read_sql("SELECT race_id, driver_id, driver_form FROM driver_form", conn)
     quali = pd.read_sql("SELECT race_id, driver_id, qualifying_pace_delta FROM qualifying_pace_delta", conn)

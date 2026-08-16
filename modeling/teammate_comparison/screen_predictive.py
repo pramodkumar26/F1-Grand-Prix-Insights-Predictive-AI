@@ -1,11 +1,4 @@
-"""Screen whether a driver's NEXT-season teammate advantage is predictable.
-
-Run before building anything. Three earlier models in this project failed because a
-target was chosen on plausibility rather than measured signal, so the rule now is:
-screen at the granularity the model would predict at, and establish the naive baseline
-first. Here the baseline is unusually strong, quali win % persists at +0.609, so
-"carry last season forward" is the number any model must beat.
-"""
+"""Screens whether next-season teammate advantage is predictable, before building anything."""
 import sqlite3
 import numpy as np
 import pandas as pd
@@ -22,7 +15,6 @@ def build_panel(conn):
         FROM teammate_pairs p JOIN dim_race r ON p.race_id = r.race_id
         WHERE p.teammate_driver_id IS NOT NULL
     """, conn)
-    # a driver's main teammate that season, the one they shared most races with
     main = (pairs.groupby(['driver_id', 'year'])['teammate_driver_id']
                  .agg(lambda s: s.value_counts().index[0]).reset_index())
     card = card.merge(main, on=['driver_id', 'year'], how='left')
@@ -35,12 +27,9 @@ def build_panel(conn):
     card['prior_teammate'] = g['teammate_driver_id'].shift()
     card['career_races'] = g['quali_races'].cumsum() - card['quali_races']
 
-    # only consecutive seasons, a gap year makes "prior" meaningless
     card = card[card.prior_year == card.year - 1].copy()
     card['teammate_changed'] = (card.teammate_driver_id != card.prior_teammate).astype(int)
 
-    # the new teammate's OWN prior record against THEIR previous teammate. This is the
-    # one thing a model could know that the naive carry-forward baseline cannot.
     opp = card[['driver_id', 'year', 'prior_quali_pct', 'prior_gap']].rename(
         columns={'driver_id': 'teammate_driver_id',
                  'prior_quali_pct': 'teammate_prior_quali_pct',

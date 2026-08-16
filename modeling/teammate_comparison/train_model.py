@@ -1,15 +1,7 @@
 """Hybrid predictor for a driver's teammate qualifying record in a season.
 
-Two branches, because one method does not fit both cases:
-
-  has a prior season  -> carry that record forward. Screened in screen_predictive.py:
-                         R2 +0.458, and no model beat it by a distinguishable margin.
-  no prior season     -> carry-forward is UNDEFINED. 46 of 165 driver-seasons (28%) are
-                         rookies, returnees or mid-career gaps. This is where a model is
-                         the only option, so this is what the model is built for.
-
-The rookie branch leans on one idea: with no record of your own, the strongest available
-signal is how good the teammate you are being measured against is.
+Carries the prior season forward when one exists; otherwise falls back to a
+rookie model based on the new teammate's own record.
 """
 import sqlite3
 import numpy as np
@@ -39,14 +31,12 @@ def build_panel(conn):
     card['prior_year'] = g['year'].shift()
     card['has_prior'] = (card.prior_year == card.year - 1)
 
-    # the teammate's own record the season before, the key signal for a rookie
     opp = card[['driver_id', 'year', 'prior_quali_pct', 'prior_gap']].rename(
         columns={'driver_id': 'teammate_driver_id',
                  'prior_quali_pct': 'teammate_prior_quali_pct',
                  'prior_gap': 'teammate_prior_gap'})
     card = card.merge(opp, on=['teammate_driver_id', 'year'], how='left')
 
-    # car quality, averaged over that driver's races in the season
     ts = pd.read_sql("""
         SELECT r.year, t.team_id, AVG(t.team_strength) team_strength
         FROM team_strength t JOIN dim_race r ON t.race_id = r.race_id
@@ -61,9 +51,6 @@ def build_panel(conn):
 
 
 def fit_rookie_model(train):
-    # trained on every season where the features exist, not only rookie seasons, so the
-    # relationship between teammate strength and record is learned from all 8 seasons
-    # rather than from the handful of rookie rows alone
     t = train.dropna(subset=['teammate_prior_quali_pct'])
     med = t[ROOKIE_FEATURES].median()
     model = Ridge(alpha=1.0).fit(t[ROOKIE_FEATURES].fillna(med), t.quali_win_pct)

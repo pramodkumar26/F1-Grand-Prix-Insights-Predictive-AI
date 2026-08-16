@@ -5,9 +5,6 @@ from xgboost import XGBRegressor
 
 from train_model import DB_PATH, FEATURES, TARGET, load_data, chronological_split
 
-# xgboost trains in boosting rounds, not epochs, each round adds one tree.
-# n_estimators=500 is the ceiling, early_stopping_rounds=30 during the real
-# training run in train_model.py is what actually decides how many get used.
 N_ESTIMATORS = 500
 EARLY_STOPPING_ROUNDS = 30
 
@@ -21,10 +18,7 @@ GRIDLINE = '#e1e0d9'
 
 
 def fit_with_full_history(X_train, y_train, X_val, y_val, X_test, y_test):
-    # validation set has to stay last in eval_set, that's what xgboost's sklearn
-    # API uses for early stopping, same rule train_model.py relies on. train and
-    # test are included too, purely to record their curves, they play no role
-    # in picking the stopping point.
+    # validation set must stay last in eval_set for early stopping to use it
     model = XGBRegressor(
         random_state=42,
         max_depth=3,
@@ -50,7 +44,6 @@ def mae_curves(model):
 
 
 def r2_curves(model, X_train, y_train, X_val, y_val, X_test, y_test):
-    # xgboost doesn't track r2 natively per round, staged predict at each round instead
     n_rounds = len(model.evals_result()['validation_0']['mae'])
     train_r2, val_r2, test_r2 = [], [], []
     for i in range(1, n_rounds + 1):

@@ -7,9 +7,7 @@ FEATURES = ['strategic_aggressiveness', 'track_difficulty_index', 'pit_stop_delt
 
 
 def compute_vif(X):
-    # VIF_i = 1 / (1 - R2_i), R2_i from regressing feature i on every other feature.
-    # Plain sklearn linear regression per feature, no statsmodels dependency needed.
-    # VIF > 5 is the usual flag for concerning collinearity, > 10 is severe.
+    # VIF > 5 flags concerning collinearity, > 10 is severe
     vifs = {}
     for col in X.columns:
         y = X[col]
@@ -45,8 +43,6 @@ def main():
         if abs(r) >= 0.3:
             print(f"  {a} <-> {b}: r = {r:.3f}")
 
-    # VIF needs complete rows, median fill for this diagnostic only, same missing
-    # value handling the linear regression baseline already uses in train_model.py
     X_filled = X.fillna(X.median())
     vifs = compute_vif(X_filled)
     print("\nVIF per feature (median filled, >5 flagged, >10 severe):")

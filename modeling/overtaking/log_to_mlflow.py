@@ -20,10 +20,7 @@ def regression_metrics(y_true, pred):
 
 
 class BlendModel(mlflow.pyfunc.PythonModel):
-    # the adopted model isn't a single sklearn/xgboost object, it's a fixed-weight
-    # blend of both, selected on the validation set (see model_log.md). Wrapped as a
-    # pyfunc so it can still be registered and reloaded by name like every other model,
-    # rather than the registry only being able to hold single-model artifacts.
+    # wraps the linear+xgboost blend as a single loggable, reloadable model
     def __init__(self, linear_model, xgb_model, fill_medians, weight_linear):
         self.linear_model = linear_model
         self.xgb_model = xgb_model
@@ -31,8 +28,6 @@ class BlendModel(mlflow.pyfunc.PythonModel):
         self.weight_linear = weight_linear
 
     def predict(self, context, model_input):
-        # linear gets median-filled input, same as train_baseline(); xgboost gets raw
-        # input, it handles missing values natively, same as train_primary()
         filled = model_input.fillna(self.fill_medians)
         lin_pred = self.linear_model.predict(filled)
         xgb_pred = self.xgb_model.predict(model_input)
@@ -58,8 +53,6 @@ def main():
         'train_years': '2018-2022', 'val_year': '2023', 'test_years': '2024-2025',
     }
 
-    # both component runs logged and tracked, neither registered, only the blend is
-    # the adopted, reusable model
     linear_model, linear_pred = train_baseline(X_train, y_train, X_test)
     linear_metrics = regression_metrics(y_test, linear_pred)
     with mlflow.start_run(run_name='overtaking-component-linear'):

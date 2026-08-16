@@ -40,10 +40,6 @@ def main():
     plt.savefig(f'{PLOTS_DIR}/shap_bar.png', dpi=180, bbox_inches='tight')
     plt.close()
 
-    # two worked examples, not one. The best-hit case alone only shows the model can
-    # nail the easy, obvious cases, it says nothing about where it actually struggles.
-    # The worst-miss case is picked from the errors it makes, not from the outcomes it
-    # predicts, so it isn't hand-picked to look good.
     best_idx = int(np.argmax(proba))
     error = (proba - y_test.values)
     worst_idx = int(np.argmax(np.abs(error)))

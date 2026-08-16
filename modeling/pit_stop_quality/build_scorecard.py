@@ -1,14 +1,4 @@
-"""Team pit stop execution scorecard.
-
-Descriptive, not a model. See model_log.md: per-stop outcomes were screened and found
-unpredictable (R2 -0.067), while team-level execution is the most stable signal measured
-anywhere in this project (+0.699). So this reports the stable thing directly rather than
-fitting a model to the unstable one.
-
-Built on pit_stop_delta, a driver's average stop duration minus that race's field median.
-Negative is faster than the field. Using the race median rather than raw seconds controls
-for circuit pit lane length and for era, a 2018 stop and a 2025 stop are comparable.
-"""
+"""Team pit stop execution scorecard, descriptive rather than a trained model."""
 import sqlite3
 import pandas as pd
 
@@ -38,13 +28,11 @@ def build_scorecard():
         total_stops=('stop_count', 'sum'),
         mean_delta=('pit_stop_delta', 'mean'),
         median_delta=('pit_stop_delta', 'median'),
-        # spread of execution: a team can be fast on average but erratic
         consistency=('pit_stop_delta', 'std'),
         mean_stop_seconds=('avg_stop_duration', 'mean'),
     ).reset_index()
 
     card = card[card.total_stops >= MIN_STOPS].copy()
-    # rank within season, 1 = best executing team that year
     card['rank_in_season'] = card.groupby('year')['mean_delta'].rank(method='min')
     card.to_sql('pit_stop_scorecard', conn, if_exists='replace', index=False)
     conn.commit()
@@ -53,8 +41,6 @@ def build_scorecard():
 
 
 def validate(card):
-    # does team execution persist across seasons? this is what justifies reporting it
-    # as a team attribute rather than a per-race outcome
     c = card.sort_values(['team_id', 'year'])
     c['next_year'] = c.groupby('team_id')['year'].shift(-1)
     c['next_delta'] = c.groupby('team_id')['mean_delta'].shift(-1)

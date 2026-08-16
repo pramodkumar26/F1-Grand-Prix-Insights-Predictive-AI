@@ -5,8 +5,6 @@ DB_PATH = 'f1.db'
 
 
 def load_results(conn):
-    # identical to podium/build_features.py's load_results, every driver who actually
-    # started (has a grid_position), DNFs included as legitimate is_win=0 rows
     query = """
         SELECT r.race_id, r.driver_id, r.team_id, r.grid_position, r.finish_position, d.year
         FROM fact_race_results r
@@ -22,9 +20,6 @@ def build_win_features_table():
     conn = sqlite3.connect(DB_PATH)
 
     results = load_results(conn)
-    # identical pre-race-safe feature set as podium_features.py, reused directly, not
-    # rebuilt, same reasoning: only information knowable after qualifying, before the
-    # race starts
     strength = pd.read_sql("SELECT DISTINCT race_id, team_id, team_strength FROM team_strength", conn)
     form = pd.read_sql("SELECT race_id, driver_id, driver_form FROM driver_form", conn)
     quali = pd.read_sql("SELECT race_id, driver_id, qualifying_pace_delta FROM qualifying_pace_delta", conn)

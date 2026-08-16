@@ -1,9 +1,3 @@
-"""Logs the existing podium model into MLflow tracking + registry.
-
-Does not retrain anything new, imports the same train_primary() from train_model.py
-that produces the numbers in model_log.md, so what gets registered is exactly what's
-documented, not a separate copy that could drift.
-"""
 import sqlite3
 import mlflow
 import mlflow.xgboost
@@ -46,8 +40,6 @@ def main():
         'train_years': '2018-2022', 'val_year': '2023', 'test_years': '2024-2025',
     }
 
-    # baseline run, tracked for comparison, NOT registered, this is what the primary
-    # model has to beat, not something meant to be reloaded and used
     baseline_model, baseline_pred, baseline_proba = train_baseline(X_train, y_train, X_test)
     baseline_metrics = classification_metrics(y_test, baseline_pred, baseline_proba)
     with mlflow.start_run(run_name='podium-baseline-logistic'):
@@ -58,7 +50,6 @@ def main():
     for k, v in baseline_metrics.items():
         print(f'  {k}: {v:.4f}')
 
-    # primary run, registered, this is the adopted model
     model, pred, proba = train_primary(X_train, y_train, X_val, y_val, X_test)
     metrics = classification_metrics(y_test, pred, proba)
     with mlflow.start_run(run_name='podium-primary-xgboost'):

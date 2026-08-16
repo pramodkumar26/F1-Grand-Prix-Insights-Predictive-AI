@@ -15,8 +15,18 @@ def load_results(conn):
 
 
 def classify_dnf(results):
-    # anything other than finishing on the lead lap or a lapped classification counts as a DNF
-    finished = results['status'].eq('Finished') | results['status'].str.startswith('+', na=False)
+    # anything other than finishing on the lead lap or a lapped classification counts as a DNF.
+    #
+    # FastF1 CHANGED ITS STATUS VOCABULARY IN 2023. Lapped finishers were reported as
+    # "+1 Lap" / "+2 Laps" up to 2022 (629 rows) and as "Lapped" from 2023 (297 rows).
+    # Matching only on the "+" prefix therefore counted every lapped finisher from 2023
+    # onward as a retirement, which inflated the measured DNF rate from roughly 0.16 to
+    # 0.40 in 2024 and made it look like modern cars had become dramatically less
+    # reliable. Corrected, the rate declines smoothly (2023 0.150, 2024 0.113, 2025
+    # 0.125), which matches reality.
+    finished = (results['status'].eq('Finished')
+                | results['status'].str.startswith('+', na=False)
+                | results['status'].eq('Lapped'))
     results['dnf'] = ~finished
     return results
 

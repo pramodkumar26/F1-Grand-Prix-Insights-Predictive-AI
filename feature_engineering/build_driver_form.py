@@ -12,7 +12,12 @@ def load_results(conn):
         JOIN dim_race d ON r.race_id = d.race_id
     """
     results = pd.read_sql(query, conn)
-    finished = results['status'].eq('Finished') | results['status'].str.startswith('+', na=False)
+    # "Lapped" is FastF1's post-2023 spelling of "+1 Lap", a finisher, not a retirement.
+    # Omitting it silently dropped 297 legitimate finishers from 2023 onward. See the
+    # full explanation in build_dnf_rate.py.
+    finished = (results['status'].eq('Finished')
+                | results['status'].str.startswith('+', na=False)
+                | results['status'].eq('Lapped'))
     results = results[finished].copy()
     results = results.dropna(subset=['grid_position', 'finish_position'])
     results['positions_gained'] = results['grid_position'] - results['finish_position']

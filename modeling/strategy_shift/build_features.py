@@ -13,7 +13,12 @@ def load_results(conn):
     """
     results = pd.read_sql(query, conn)
     # grid_position=0 pit lane starts are fixed at the source, see collecting_data/fix_grid_position.py
-    finished = results['status'].eq('Finished') | results['status'].str.startswith('+', na=False)
+    # "Lapped" is FastF1's post-2023 spelling of "+1 Lap", a finisher, not a retirement.
+    # Omitting it silently dropped 297 legitimate finishers from 2023 onward, most of
+    # them in the test years. See the full explanation in build_dnf_rate.py.
+    finished = (results['status'].eq('Finished')
+                | results['status'].str.startswith('+', na=False)
+                | results['status'].eq('Lapped'))
     results = results[finished].copy()
     results = results.dropna(subset=['grid_position', 'finish_position'])
     results['positions_gained'] = results['grid_position'] - results['finish_position']
@@ -21,11 +26,18 @@ def load_results(conn):
 
 
 def load_primary_degradation(conn):
-    # for each driver's race, picks the stint with the most laps as their primary compound trajectory
-    stints = pd.read_sql("SELECT race_id, driver_id, degradation_rate, lap_count FROM tyre_degradation_stints", conn)
+    # for each driver's race, picks the stint with the most laps as their primary compound trajectory.
+    # Reads tyre_degradation_adjusted, not the original tyre_degradation_stints: the raw slope
+    # mixes tyre wear with fuel burn and is contaminated by the standing start, badly enough that
+    # its median had the wrong SIGN (-0.027 s/lap, i.e. claiming tyres get faster as they age).
+    # See feature_engineering/build_fuel_adjusted_degradation.py for both corrections.
+    stints = pd.read_sql(
+        "SELECT race_id, driver_id, fuel_adjusted_degradation_rate, lap_count FROM tyre_degradation_adjusted",
+        conn
+    )
     idx = stints.groupby(['race_id', 'driver_id'])['lap_count'].idxmax()
-    primary = stints.loc[idx, ['race_id', 'driver_id', 'degradation_rate']]
-    return primary.rename(columns={'degradation_rate': 'primary_degradation_rate'})
+    primary = stints.loc[idx, ['race_id', 'driver_id', 'fuel_adjusted_degradation_rate']]
+    return primary.rename(columns={'fuel_adjusted_degradation_rate': 'primary_degradation_rate'})
 
 
 def build_strategy_shift_table():
@@ -42,6 +54,14 @@ def build_strategy_shift_table():
     form = pd.read_sql("SELECT race_id, driver_id, driver_form FROM driver_form", conn)
     quali = pd.read_sql("SELECT race_id, driver_id, qualifying_pace_delta FROM qualifying_pace_delta", conn)
     wet = pd.read_sql("SELECT race_id, is_wet_race FROM race_wet_flag", conn)
+    # built in phase 2 and previously consumed by no model. Erratic pace is a direct
+    # signal that a driver hit trouble, which is what the hardest positions_gained
+    # values have in common.
+    pace = pd.read_sql("SELECT race_id, driver_id, pace_consistency FROM pace_consistency", conn)
+    # an extra stop usually means a puncture, damage or a failed strategy, all of which
+    # cost track position in a way the existing features can't see
+    stops = pd.read_sql("""SELECT race_id, driver_id, MAX(stint_number) AS pit_stop_count
+                           FROM fact_laps GROUP BY race_id, driver_id""", conn)
 
     table = results.merge(aggressiveness, on=['race_id', 'driver_id'], how='inner')
     table = table.merge(difficulty, on='race_id', how='left')
@@ -51,13 +71,22 @@ def build_strategy_shift_table():
     table = table.merge(form, on=['race_id', 'driver_id'], how='left')
     table = table.merge(quali, on=['race_id', 'driver_id'], how='left')
     table = table.merge(wet, on='race_id', how='left')
+    table = table.merge(pace, on=['race_id', 'driver_id'], how='left')
+    table = table.merge(stops, on=['race_id', 'driver_id'], how='left')
 
+    # NOT included, deliberately: blue flag count from fact_race_control. It measured as
+    # the single largest available gain (R2 0.364 to 0.384, second highest importance),
+    # and it is being declined anyway. A blue flag means the driver is being lapped,
+    # which is a symptom of the same trouble that costs positions, not a cause of it.
+    # It inflates the metric while making the SHAP explanation worse, "you lost
+    # positions because you were shown blue flags" is a restatement of the outcome, not
+    # an insight. For a project whose whole point is explainability that is a bad trade.
     table = table[[
         'race_id', 'driver_id', 'team_id', 'year',
         'positions_gained', 'strategic_aggressiveness',
         'track_difficulty_index', 'pit_stop_delta',
         'primary_degradation_rate', 'grid_position', 'team_strength', 'driver_form',
-        'qualifying_pace_delta', 'is_wet_race'
+        'qualifying_pace_delta', 'is_wet_race', 'pace_consistency', 'pit_stop_count'
     ]]
 
     table.to_sql('strategy_shift_features', conn, if_exists='replace', index=False)

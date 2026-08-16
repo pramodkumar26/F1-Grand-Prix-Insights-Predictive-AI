@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .env
 modeling/*/model_log.md
+flow.md
+mlflow_runbook.md
+mlflow.db
+mlruns/

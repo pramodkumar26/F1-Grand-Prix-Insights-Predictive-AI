@@ -5,7 +5,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from xgboost import XGBRegressor
 
 DB_PATH = 'f1.db'
-FEATURES = ['strategic_aggressiveness', 'track_difficulty_index', 'pit_stop_delta', 'primary_degradation_rate', 'grid_position', 'team_strength', 'driver_form', 'qualifying_pace_delta', 'is_wet_race']
+FEATURES = ['strategic_aggressiveness', 'track_difficulty_index', 'pit_stop_delta', 'primary_degradation_rate', 'grid_position', 'team_strength', 'driver_form', 'qualifying_pace_delta', 'is_wet_race', 'pace_consistency', 'pit_stop_count']
 TARGET = 'positions_gained'
 
 

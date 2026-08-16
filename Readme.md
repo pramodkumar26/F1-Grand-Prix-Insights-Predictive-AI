@@ -1,13 +1,15 @@
 # Grand Prix Insights
 
 This is a Formula 1 data project where I pull real race data from 2018 to
-2025 and use it to build machine learning models. The end goal is five
-models: who finishes on the podium, how tyres wear down over a race, how
-one teammate compares to another, whether a pit stop decision was
-actually a good call, and how much a driver's race outcome shifted from
-what their grid position alone would predict. On top of the models,
-there's a chatbot that answers questions using the model outputs, not
-just general knowledge.
+2025 and use it to build machine learning models. The original goal was
+five models: podium, tyre wear, teammate comparison, pit stop decision
+quality, and how much a driver's race outcome shifted from what their
+grid position alone would predict. That goal shifted a bit along the way,
+some of those turned out to be better answered with a counted statistic
+than a trained model, and two more models got added once the data showed
+they were worth building. On top of everything, there's a chatbot planned
+that answers questions using the model outputs, not just general
+knowledge, that part hasn't been built yet.
 
 ## What the data looks like
 
@@ -42,3 +44,70 @@ Overall, this exploration step mattered a lot. It caught real problems
 before they could quietly break any model, and it confirmed that the
 patterns I'm hoping to model are actually present in the data, not just
 assumptions.
+
+## Turning the data into features
+
+Before any model, there was a separate phase just for building features
+out of the raw data, things like how strong a team's car has been
+recently, how a driver's pace compares to their own teammate that
+weekend, how much a driver's tyres actually wore down once fuel burning
+off is accounted for, and how early or late a team tends to pit relative
+to the rest of the field. Every one of these is built so it only ever
+looks at information that would genuinely have been available at the
+time, not something borrowed from later in the same race, unless a model
+is deliberately meant to explain a race that already happened rather than
+predict one that hasn't happened yet.
+
+## The models that worked
+
+Five things ended up predictable enough to actually build.
+
+| model | what it predicts | result |
+|---|---|---|
+| podium | whether a driver finishes in the top 3 | ranks podium finishers above non-finishers correctly about 94% of the time, the cleanest result of the project, mostly because grid position and car strength are genuinely very predictive of a podium in real F1 |
+| win | whether a driver finishes 1st | about 95%, cheap to build once podium already existed, and it showed something genuinely different, a competitive car and a clean race is enough to reach the podium, but winning outright takes real car dominance |
+| points scored | championship points earned in a race | explains around 70% of the variation, the strongest predictive result of everything I built, and it fills a real gap podium leaves, most of the grid never actually podiums |
+| strategy shift | positions gained or lost versus grid position, and why | explains a bit under half, allowed to use information from during the race itself since its job is explaining a race that already happened, not forecasting one, a real chunk of what's left is other drivers crashing or a safety car landing at the right or wrong moment, which nothing can predict |
+| overtaking | track position gained over a race | the weakest of the five at around 20%, and it measures net position gained, not pure passing, some of the signal is just benefiting from a rival's pit stop timing, the two aren't cleanly separable with the data I have |
+
+## Two things that turned out to be counted, not modeled
+
+Teammate comparison and pit stop execution both turned out to be
+questions with a directly countable answer. Building a model to estimate
+something that can just be measured would only add error, not remove it,
+so both of these became scorecards instead, a head to head record between
+teammates, and a team level pit stop execution ranking.
+
+## Two things I tried and closed
+
+Tyre degradation and DNF prediction both got a real, thorough attempt and
+both got closed, not because the modeling was weak but because the
+pattern genuinely isn't predictable in this data. Tyre wear at a given
+circuit barely repeats from one season to the next. Team reliability is
+stable year over year, but which specific driver retires from which
+specific race is dominated by things like crashes, which are close to
+random. Both are documented in full rather than abandoned quietly, the
+reasoning behind why something doesn't work is still a real result.
+
+## Explaining the predictions, not just stating them
+
+A number on its own isn't that useful. I added SHAP on top of the models
+complex enough to actually need it, so a prediction comes with a
+breakdown of which factors pushed it up and which pushed it down, not
+just the final number on its own. The simplest of the five models
+explains itself well enough through its own coefficients that SHAP
+wouldn't have added anything.
+
+## Tracking the models properly
+
+I set up MLflow locally to track every model's training runs, the simple
+baseline it was compared against and the model that actually got adopted,
+not just the final number. The adopted models are registered there by
+name, so anything downstream, eventually the chatbot, can ask for the
+current version of a model instead of depending on raw files.
+
+## What's next
+
+The models, the scorecards, and the tracking above are the inputs. The
+chatbot, the part that actually answers questions using them, hasn't been
+built yet.

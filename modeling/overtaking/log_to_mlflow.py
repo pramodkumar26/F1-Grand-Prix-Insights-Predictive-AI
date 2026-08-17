@@ -50,7 +50,7 @@ def main():
     common_params = {
         'features': ','.join(FEATURES), 'target': TARGET,
         'train_rows': len(train), 'val_rows': len(val), 'test_rows': len(test),
-        'train_years': '2018-2022', 'val_year': '2023', 'test_years': '2024-2025',
+        'train_years': '2018-2022', 'val_year': '2023', 'test_years': '2024-2026',
     }
 
     linear_model, linear_pred = train_baseline(X_train, y_train, X_test)

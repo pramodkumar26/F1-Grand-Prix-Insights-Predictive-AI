@@ -27,6 +27,9 @@ team_map = {row['team_name']: int(row['team_id']) for _, row in team_lookup.iter
 race_lookup = pd.read_sql('SELECT race_id, year, round FROM dim_race', conn)
 race_map = {(int(row['year']), int(row['round'])): int(row['race_id']) for _, row in race_lookup.iterrows()}
 
+loaded_races = pd.read_sql('SELECT DISTINCT race_id FROM fact_race_results', conn)
+loaded_race_ids = set(loaded_races['race_id'])
+
 inserted = 0
 skipped = 0
 
@@ -35,7 +38,7 @@ for _, row in results.iterrows():
     driver_id = driver_map.get(row['Abbreviation'])
     team_id = team_map.get(row['TeamName'])
 
-    if race_id is None or driver_id is None or team_id is None:
+    if race_id is None or driver_id is None or team_id is None or race_id in loaded_race_ids:
         skipped += 1
         continue
 

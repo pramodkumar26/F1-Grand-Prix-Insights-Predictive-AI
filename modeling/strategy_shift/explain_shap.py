@@ -24,7 +24,7 @@ def main():
 
     mean_abs = shap_values.abs.mean(0).values
     ranked = sorted(zip(FEATURES, mean_abs), key=lambda pair: -pair[1])
-    print("mean |SHAP value| per feature, test set (2024-2025):")
+    print("mean |SHAP value| per feature, test set (2024+):")
     for name, value in ranked:
         print(f"  {name}: {value:.4f}")
 

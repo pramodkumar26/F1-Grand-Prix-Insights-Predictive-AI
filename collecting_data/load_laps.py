@@ -30,6 +30,9 @@ race_map = {(int(row['year']), int(row['round'])): int(row['race_id']) for _, ro
 compound_lookup = pd.read_sql('SELECT compound_id, compound_name FROM dim_tyre_compound', conn)
 compound_map = {row['compound_name']: int(row['compound_id']) for _, row in compound_lookup.iterrows()}
 
+loaded_races = pd.read_sql('SELECT DISTINCT race_id FROM fact_laps', conn)
+loaded_race_ids = set(loaded_races['race_id'])
+
 inserted = 0
 skipped = 0
 
@@ -41,7 +44,7 @@ for _, row in laps.iterrows():
     team_id = team_map.get(row['Team'])
     compound_id = compound_map.get(row['Compound'])
 
-    if race_id is None or driver_id is None or team_id is None:
+    if race_id is None or driver_id is None or team_id is None or race_id in loaded_race_ids:
         skipped += 1
         continue
 

@@ -27,7 +27,13 @@ def get_season_era(year):
     else:
         return 'post_covid'
 
+existing = pd.read_sql('SELECT year, round FROM dim_race', conn)
+existing_keys = set(zip(existing['year'], existing['round']))
+
 for _, row in schedule.iterrows():
+    if (row['year'], row['RoundNumber']) in existing_keys:
+        continue
+
     circuit_id = circuit_map.get(row['Location'])
     season_era = get_season_era(row['year'])
 

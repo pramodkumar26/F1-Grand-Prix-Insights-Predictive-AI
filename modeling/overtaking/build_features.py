@@ -48,7 +48,7 @@ if __name__ == '__main__':
     print(f"overtaking_features table built, {len(table)} rows")
     print(f"train 2018-2022: {(table.year <= 2022).sum()}, "
           f"val 2023: {(table.year == 2023).sum()}, "
-          f"test 2024-2025: {(table.year >= 2024).sum()}")
+          f"test 2024+: {(table.year >= 2024).sum()}")
     print("\nnull counts:")
     print(table.isna().sum().to_string())
     print(f"\novertakes_made distribution:")

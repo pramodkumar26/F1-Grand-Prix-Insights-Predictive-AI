@@ -79,7 +79,7 @@ if __name__ == '__main__':
     table = build_strategy_shift_table()
     print(f"strategy_shift_features table built, {len(table)} rows")
     print(f"train, 2018 to 2023: {(table['year'] <= 2023).sum()} rows")
-    print(f"test, 2024 to 2025: {(table['year'] >= 2024).sum()} rows")
+    print(f"test, 2024+: {(table['year'] >= 2024).sum()} rows")
     print("null counts per column:")
     print(table.isna().sum())
     print(table.describe())

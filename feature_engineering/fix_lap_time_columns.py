@@ -12,10 +12,15 @@ def load_time_columns(conn):
 
 
 def convert_to_seconds(series):
-    # skips columns that are already numeric, parses the rest as timedelta strings
-    if pd.api.types.is_numeric_dtype(series):
-        return series
-    return pd.to_timedelta(series, errors='coerce').dt.total_seconds()
+    # a column can mix already-fixed numeric values (from a prior run) with fresh
+    # timedelta strings (from newly loaded races) in the same pandas object column,
+    # so the numeric/text split has to happen per value, not once for the whole series
+    numeric = pd.to_numeric(series, errors='coerce')
+    needs_parsing = numeric.isna() & series.notna()
+    if needs_parsing.any():
+        parsed = pd.to_timedelta(series[needs_parsing], errors='coerce').dt.total_seconds()
+        numeric.loc[needs_parsing] = parsed
+    return numeric
 
 
 def apply_fix(conn, laps):

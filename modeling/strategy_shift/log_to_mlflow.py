@@ -35,7 +35,7 @@ def main():
     common_params = {
         'features': ','.join(FEATURES), 'target': TARGET,
         'train_rows': len(train), 'val_rows': len(val), 'test_rows': len(test),
-        'train_years': '2018-2023', 'val_year': '2023 (shared with train)', 'test_years': '2024-2025',
+        'train_years': '2018-2023', 'val_year': '2023 (shared with train)', 'test_years': '2024-2026',
         'note': 'explanatory model, uses in-race features on purpose, not a pre-race forecast',
     }
 

@@ -24,7 +24,7 @@ def main():
     shap_values = explainer(X_test)
 
     mean_abs = shap_values.abs.mean(0).values
-    print("mean |SHAP value| per feature (points), test set (2024-2025):")
+    print("mean |SHAP value| per feature (points), test set (2024+):")
     for name, value in sorted(zip(FEATURES, mean_abs), key=lambda kv: -kv[1]):
         print(f"  {name}: {value:.4f}")
 

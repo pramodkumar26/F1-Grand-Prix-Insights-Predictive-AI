@@ -51,6 +51,6 @@ if __name__ == '__main__':
     print(f"podium rate: {table['is_podium'].mean():.3f}")
     print(f"train, 2018-2022: {(table['year'] <= 2022).sum()} rows")
     print(f"val, 2023: {(table['year'] == 2023).sum()} rows")
-    print(f"test, 2024-2025: {(table['year'] >= 2024).sum()} rows")
+    print(f"test, 2024+: {(table['year'] >= 2024).sum()} rows")
     print("null counts per column:")
     print(table.isna().sum())

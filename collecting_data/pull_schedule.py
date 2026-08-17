@@ -3,7 +3,7 @@ import os
 
 fastf1.Cache.enable_cache('cache')
 
-years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]
 
 os.makedirs('data/raw/schedule', exist_ok=True)
 

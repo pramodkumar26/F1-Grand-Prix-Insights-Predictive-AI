@@ -1,7 +1,8 @@
 # Grand Prix Insights
 
-This is a Formula 1 data project where I pull real race data from 2018 to
-2025 and use it to build machine learning models. The original goal was
+This is a Formula 1 data project where I pull real race data from 2018
+through the current 2026 season and use it to build machine learning
+models. The original goal was
 five models: podium, tyre wear, teammate comparison, pit stop decision
 quality, and how much a driver's race outcome shifted from what their
 grid position alone would predict. That goal shifted a bit along the way,
@@ -15,7 +16,8 @@ knowledge, that part hasn't been built yet.
 
 All the race data comes from FastF1 and is stored in a SQLite database.
 It covers lap times, race results, weather, qualifying, and race control
-messages (things like flags and safety cars) across 8 seasons.
+messages (things like flags and safety cars) across 9 seasons, with 2026
+still in progress and refreshed as new races happen.
 
 ## What I found while exploring the data
 
@@ -66,9 +68,9 @@ Five things ended up predictable enough to actually build.
 |---|---|---|
 | podium | whether a driver finishes in the top 3 | ranks podium finishers above non-finishers correctly about 94% of the time, the cleanest result of the project, mostly because grid position and car strength are genuinely very predictive of a podium in real F1 |
 | win | whether a driver finishes 1st | about 95%, cheap to build once podium already existed, and it showed something genuinely different, a competitive car and a clean race is enough to reach the podium, but winning outright takes real car dominance |
-| points scored | championship points earned in a race | explains around 70% of the variation, the strongest predictive result of everything I built, and it fills a real gap podium leaves, most of the grid never actually podiums |
+| points scored | championship points earned in a race | explains around 72% of the variation, the strongest predictive result of everything I built, and it fills a real gap podium leaves, most of the grid never actually podiums |
 | strategy shift | positions gained or lost versus grid position, and why | explains a bit under half, allowed to use information from during the race itself since its job is explaining a race that already happened, not forecasting one, a real chunk of what's left is other drivers crashing or a safety car landing at the right or wrong moment, which nothing can predict |
-| overtaking | track position gained over a race | the weakest of the five at around 20%, and it measures net position gained, not pure passing, some of the signal is just benefiting from a rival's pit stop timing, the two aren't cleanly separable with the data I have |
+| overtaking | track position gained over a race | the weakest of the five at around 16%, and it measures net position gained, not pure passing, some of the signal is just benefiting from a rival's pit stop timing, the two aren't cleanly separable with the data I have. that number moved down from 20% once the 2026 season was folded in, but the actual prediction error barely changed, it's because 2026's races so far have had less overtaking spread to explain, not a weaker model, checked directly rather than just taking the drop at face value |
 
 ## Two things that turned out to be counted, not modeled
 

@@ -5,7 +5,7 @@ import time
 
 fastf1.Cache.enable_cache('cache')
 
-year = 2025
+year = 2026
 
 schedule = fastf1.get_event_schedule(year)
 

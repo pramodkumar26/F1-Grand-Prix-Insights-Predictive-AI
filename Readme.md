@@ -8,9 +8,9 @@ quality, and how much a driver's race outcome shifted from what their
 grid position alone would predict. That goal shifted a bit along the way,
 some of those turned out to be better answered with a counted statistic
 than a trained model, and two more models got added once the data showed
-they were worth building. On top of everything, there's a chatbot planned
-that answers questions using the model outputs, not just general
-knowledge, that part hasn't been built yet.
+they were worth building. On top of everything sits a chatbot that answers
+questions using the model outputs and the real race records, not general
+knowledge, which is now built and running.
 
 ## What the data looks like
 
@@ -108,8 +108,68 @@ not just the final number. The adopted models are registered there by
 name, so anything downstream, eventually the chatbot, can ask for the
 current version of a model instead of depending on raw files.
 
-## What's next
+## The chatbot
 
 The models, the scorecards, and the tracking above are the inputs. The
-chatbot, the part that actually answers questions using them, hasn't been
-built yet.
+chatbot is what turns them into something you can actually talk to. It's a
+Streamlit app that talks to Google Gemini, and the important part is that
+Gemini never answers from its own knowledge. Every answer has to come back
+through one of fourteen tools that either run a trained model or read a
+real record out of the database.
+
+Those tools split into three kinds, and the chatbot is required to speak
+about them differently:
+
+- Straight facts, like championship standings, a driver's full season
+  results, what happened in a given race, the official race control
+  messages from it, teammate head to heads, pit stop rankings, sprint
+  results, and when the next race is. These get stated plainly, because
+  they already happened.
+- Model predictions for podium, win, and points. These always come with
+  the reason attached, pulled from the same SHAP values described above,
+  so it says why it thinks that and not just a bare number.
+- The overtaking estimate, which the model only explains a small share of.
+  This one is never allowed to state a number at all, only whether it's
+  more or less than typical for that grid slot.
+
+The strategy shift model is treated separately again, because it uses
+things that happened during the race. It's only ever allowed to explain a
+race that already finished, never to predict one.
+
+The limits are deliberate and the chatbot admits them. It only knows races
+that are already in the database, so it can't predict an upcoming race, and
+it says so instead of guessing. It can tell you when and where the next
+race is, because a calendar is not a prediction.
+
+## Running it
+
+The chatbot needs a Google Gemini API key, on the free tier. Put it in
+`.streamlit/secrets.toml`, which is gitignored and never committed:
+
+```
+GEMINI_API_KEY = "your-key-here"
+```
+
+Then install and run:
+
+```
+pip install -r requirements.txt
+streamlit run chatbot/app.py
+```
+
+The models load out of the MLflow registry rather than from loose files,
+so `mlflow.db` and `mlruns/` need to be present, and they're both in the
+repo. To browse the tracked runs and compare model versions directly:
+
+```
+mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
+```
+
+## What's next
+
+Data collection is still a manual step, so new race results only appear
+once the pipeline is re-run by hand. The natural next piece is a scheduled
+job that pulls each new race weekend automatically. Retraining would stay
+manual on purpose, since every model in this project got compared against
+the previous version before being adopted, and a job that silently swapped
+models out would throw that away.

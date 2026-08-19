@@ -181,15 +181,17 @@ repo. To browse the tracked runs and compare model versions directly:
 mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
 ```
 
-## Keeping it current
+## Staying up to date without retraining blindly
 
 A GitHub Actions workflow pulls each new race weekend automatically once
 a day, so the database no longer depends on someone running the pipeline
 by hand. Retraining stays a manual step on purpose, and the workflow
-enforces that by never touching anything under `modeling/`. Every model in
-this project got compared against the previous version before being
+enforces that by never touching anything under `modeling/`. Every model
+in this project got compared against the previous version before being
 adopted, and a job that silently swapped models out on a schedule would
 throw that discipline away for the sake of convenience.
+
+## Where the project's scope actually starts, and why
 
 The dataset covers 2018 onward, which is where FastF1's lap-by-lap data
 starts. Race results and standings go back to 1950 through other sources,

@@ -7,4 +7,5 @@ __pycache__/
 modeling/*/model_log.md
 flow.md
 mlflow_runbook.md
+interview_prep.md
 .streamlit/secrets.toml

@@ -19,24 +19,10 @@ falls outside what it actually has.
 
 ![Grand Prix Insights landing page](docs/images/landing.png)
 
-```mermaid
-flowchart TD
-    A[FastF1<br/>2018-2026, laps/results/weather/qualifying] --> C[(SQLite: f1.db)]
-    B[Jolpica<br/>sprint results only] --> C
-    C --> D[Feature engineering<br/>21 tables, no lookahead leakage]
-    D --> E[5 trained models<br/>XGBoost + SHAP]
-    D --> F[2 scorecards<br/>direct SQL, no model]
-    E --> G[(MLflow<br/>tracking + registry)]
-    G --> H[chatbot/tools.py<br/>16 tools]
-    F --> H
-    H <--> I[Gemini<br/>function calling only,<br/>never answers from memory]
-    I <--> J[Streamlit UI]
-```
-
-The scorecards skip MLflow entirely, on purpose — there's no model there
-to version, just a query. The chatbot is the only thing that talks to
-Gemini, and Gemini is only ever allowed to respond by calling one of the
-16 tools above; nothing it says is allowed to come from its own training
+The scorecards skip MLflow entirely, on purpose, since there's no model
+there to version, just a query. The chatbot is the only thing that talks
+to Gemini, and Gemini is only ever allowed to respond by calling one of
+its 16 tools, nothing it says is allowed to come from its own training
 data.
 
 ## What the data looks like

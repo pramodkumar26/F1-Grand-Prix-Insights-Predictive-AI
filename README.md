@@ -116,17 +116,17 @@ The models, the scorecards, and the tracking above are the inputs. The
 chatbot is what turns them into something you can actually talk to. It's a
 Streamlit app that talks to Google Gemini, and the important part is that
 Gemini never answers from its own knowledge. Every answer has to come back
-through one of fourteen tools that either run a trained model or read a
+through one of sixteen tools that either run a trained model or read a
 real record out of the database.
 
 Those tools split into three kinds, and the chatbot is required to speak
 about them differently:
 
-- Straight facts, like championship standings, a driver's full season
-  results, what happened in a given race, the official race control
-  messages from it, teammate head to heads, pit stop rankings, sprint
-  results, and when the next race is. These get stated plainly, because
-  they already happened.
+- Straight facts, like championship and constructor standings, a driver's
+  full season results and career totals, the full season calendar, what
+  happened in a given race, the official race control messages from it,
+  teammate head to heads, pit stop rankings, sprint results, and when the
+  next race is. These get stated plainly, because they already happened.
 - Model predictions for podium, win, and points. These always come with
   the reason attached, pulled from the same SHAP values described above,
   so it says why it thinks that and not just a bare number.
@@ -142,6 +142,7 @@ The limits are deliberate and the chatbot admits them. It only knows races
 that are already in the database, so it can't predict an upcoming race, and
 it says so instead of guessing. It can tell you when and where the next
 race is, because a calendar is not a prediction.
+
 
 ## Running it
 
@@ -167,11 +168,21 @@ repo. To browse the tracked runs and compare model versions directly:
 mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
 ```
 
-## What's next
+## Keeping it current
 
-Data collection is still a manual step, so new race results only appear
-once the pipeline is re-run by hand. The natural next piece is a scheduled
-job that pulls each new race weekend automatically. Retraining would stay
-manual on purpose, since every model in this project got compared against
-the previous version before being adopted, and a job that silently swapped
-models out would throw that away.
+A GitHub Actions workflow pulls each new race weekend automatically once
+a day, so the database no longer depends on someone running the pipeline
+by hand. Retraining stays a manual step on purpose, and the workflow
+enforces that by never touching anything under `modeling/`. Every model in
+this project got compared against the previous version before being
+adopted, and a job that silently swapped models out on a schedule would
+throw that discipline away for the sake of convenience.
+
+The dataset covers 2018 onward, which is where FastF1's lap-by-lap data
+starts. Race results and standings go back to 1950 through other sources,
+but that data would only ever reach the chatbot's fact-lookup tools, not
+the 5 trained models, since those need lap and qualifying data that
+doesn't exist for older seasons. Mixing "the chatbot knows this for real"
+with "the chatbot can only look this fact up" inside one conversation is
+more confusing than useful, so 2018 onward stays the intentional edge of
+what this project covers, not just where the easy data ran out.

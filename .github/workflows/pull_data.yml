@@ -1,0 +1,93 @@
+name: Pull latest race data
+
+on:
+  schedule:
+    # once a day at 06:00 UTC. Every step below skips races it already has, so a
+    # quiet day is a fast no-op run, not a wasted one - see flow.md section on
+    # why this doesn't need to know the F1 calendar.
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install data-pipeline dependencies
+        run: pip install fastf1 pandas numpy scipy scikit-learn
+
+      - name: Pull schedule, results, laps, weather, qualifying, race control
+        run: |
+          python collecting_data/pull_schedule.py
+          python collecting_data/retry.py
+          python collecting_data/qualifying.py
+          python collecting_data/race_control.py
+
+      - name: Recombine raw pulls into the processed CSVs
+        run: |
+          python collecting_data/combine_schedule.py
+          python collecting_data/combine_data.py
+
+      - name: Load into f1.db
+        run: |
+          python collecting_data/load_circuits_races.py
+          python collecting_data/load_data.py
+          python collecting_data/load_results.py
+          python collecting_data/load_laps.py
+          python collecting_data/load_weather.py
+          python collecting_data/load_qualifying.py
+          python collecting_data/load_race_control.py
+          python collecting_data/load_jolpica_sprint_results.py
+
+      - name: Apply source-level fixes
+        run: |
+          python collecting_data/fix_grid_position.py
+          python collecting_data/fix_weather_session_time.py
+
+      - name: Rebuild feature tables
+        run: |
+          python feature_engineering/fix_lap_time_columns.py
+          python feature_engineering/build_lap_flags.py
+          python feature_engineering/build_teammate_pairs.py
+          python feature_engineering/build_race_wet_flag.py
+          python feature_engineering/build_qualifying_gap_to_pole.py
+          python feature_engineering/build_dnf_rate.py
+          python feature_engineering/build_driver_form.py
+          python feature_engineering/build_team_strength.py
+          python feature_engineering/build_pit_stop_delta.py
+          python feature_engineering/build_strategic_aggressiveness.py
+          python feature_engineering/build_qualifying_pace.py
+          python feature_engineering/build_tyre_degradation.py
+          python feature_engineering/build_pace_consistency.py
+          python feature_engineering/build_overtakes_made.py
+          python feature_engineering/build_track_difficulty_index.py
+          python feature_engineering/build_degradation_wide.py
+          python feature_engineering/build_fuel_adjusted_degradation.py
+          python feature_engineering/build_tyre_wear_delta.py
+          python feature_engineering/build_wet_weather_delta.py
+          python feature_engineering/build_driver_overtake_trailing.py
+          python feature_engineering/build_circuit_overtake_trailing.py
+
+      # Deliberately NOT run here: anything under modeling/ or chatbot's model-facing
+      # tools. Retraining is a manual, compare-before-adopting step, same discipline
+      # used for every model in this project - a scheduled job should never silently
+      # swap out what's registered. This workflow's only job is keeping the data current
+      # for whenever that manual retrain happens.
+
+      - name: Commit and push if anything actually changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/ f1.db
+          # git push here is a safe no-op if the commit step found nothing to commit
+          git diff --quiet --cached || git commit -m "Automated data pull: $(date -u +%Y-%m-%d)"
+          git push

@@ -4,15 +4,40 @@
 
 This is a Formula 1 data project where I pull real race data from 2018
 through the current 2026 season and use it to build machine learning
-models. The original goal was
-five models: podium, tyre wear, teammate comparison, pit stop decision
-quality, and how much a driver's race outcome shifted from what their
-grid position alone would predict. That goal shifted a bit along the way,
-some of those turned out to be better answered with a counted statistic
-than a trained model, and two more models got added once the data showed
-they were worth building. On top of everything sits a chatbot that answers
-questions using the model outputs and the real race records, not general
-knowledge, which is now built and running.
+models. The real work here wasn't just training models, it was deciding
+what deserved one in the first place. Every target got asked the same
+question before any model touched it: is this actually predictable, or is
+it something I can just measure directly, or is the pattern not really
+there at all. Five turned out genuinely predictable and became trained
+models. Two turned out to have a directly countable answer and became
+scorecards instead, no model needed. Two got a real, thorough attempt and
+were closed once the data made clear the pattern wasn't reliable enough to
+trust. On top of all of it sits a chatbot that only ever answers from
+those model outputs and the real race records in the database, never from
+its own general knowledge, and it says so plainly whenever a question
+falls outside what it actually has.
+
+![Grand Prix Insights landing page](docs/images/landing.png)
+
+```mermaid
+flowchart TD
+    A[FastF1<br/>2018-2026, laps/results/weather/qualifying] --> C[(SQLite: f1.db)]
+    B[Jolpica<br/>sprint results only] --> C
+    C --> D[Feature engineering<br/>21 tables, no lookahead leakage]
+    D --> E[5 trained models<br/>XGBoost + SHAP]
+    D --> F[2 scorecards<br/>direct SQL, no model]
+    E --> G[(MLflow<br/>tracking + registry)]
+    G --> H[chatbot/tools.py<br/>16 tools]
+    F --> H
+    H <--> I[Gemini<br/>function calling only,<br/>never answers from memory]
+    I <--> J[Streamlit UI]
+```
+
+The scorecards skip MLflow entirely, on purpose — there's no model there
+to version, just a query. The chatbot is the only thing that talks to
+Gemini, and Gemini is only ever allowed to respond by calling one of the
+16 tools above; nothing it says is allowed to come from its own training
+data.
 
 ## What the data looks like
 
@@ -64,7 +89,9 @@ predict one that hasn't happened yet.
 
 ## The models that worked
 
-Five things ended up predictable enough to actually build.
+These are the five that passed that first test and actually became
+trained models. The two that turned into scorecards instead, and the two
+that got closed, are further down, each with the reasoning behind it.
 
 | model | what it predicts | result |
 |---|---|---|

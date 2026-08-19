@@ -6,6 +6,10 @@ sys.path.insert(0, PROJECT_ROOT)
 # f1.db and the mlruns artifacts are both looked up relative to the working directory
 os.chdir(PROJECT_ROOT)
 
+import sqlite3
+from datetime import datetime
+
+import pandas as pd
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -20,9 +24,11 @@ CUSTOM_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700;900&display=swap');
 
 #MainMenu, footer, header {visibility: hidden;}
+/* streamlit appends anchor links to markdown headings */
+[data-testid="stHeaderActionElements"], .hero-title a {display: none !important;}
 .block-container {
-    padding-top: 2.2rem;
-    padding-bottom: 6rem;
+    padding-top: 1.1rem;
+    padding-bottom: 3rem;
     max-width: 1080px;
     margin: 0 auto;
 }
@@ -32,65 +38,65 @@ html, body, [class*="css"], p, div, span, li {
 }
 
 .eyebrow {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 4px;
     text-transform: uppercase;
     color: #8A8A94;
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.8rem;
 }
 .hero-title {
     font-family: 'Titillium Web', sans-serif;
     font-weight: 900;
-    font-size: clamp(2.8rem, 6.5vw, 5.4rem);
-    line-height: 0.92;
-    letter-spacing: -2px;
+    font-size: clamp(2.4rem, 5vw, 4.1rem);
+    line-height: 0.9;
+    letter-spacing: -1.5px;
     text-transform: uppercase;
     color: #F5F5F0;
-    margin: 0 0 1.6rem 0;
+    margin: 0 0 1.1rem 0;
 }
 .hero-title .accent {color: #E10600;}
 .hero-lede {
-    font-size: 1.02rem;
+    font-size: 0.95rem;
     font-weight: 300;
-    line-height: 1.7;
+    line-height: 1.6;
     color: #A8A8B2;
     max-width: 32rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.3rem;
 }
 .rule {
     height: 1px;
     background: #2A2A33;
-    margin: 2.6rem 0 1.8rem 0;
+    margin: 1.5rem 0 1.1rem 0;
 }
 .stat-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 3.4rem;
+    gap: 3.2rem;
 }
 .stat-num {
     font-weight: 700;
-    font-size: 2rem;
+    font-size: 1.7rem;
     color: #F5F5F0;
     line-height: 1;
 }
 .panel {
     border: 1px solid #23232C;
     border-left: 2px solid #E10600;
-    padding: 1.4rem 1.5rem;
-    margin-top: 0.4rem;
+    padding: 1rem 1.2rem;
+    margin-top: 0.2rem;
 }
 .panel-title {
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     letter-spacing: 2.5px;
     text-transform: uppercase;
     color: #7A7A84;
-    margin-bottom: 1rem;
+    margin-bottom: 0.7rem;
 }
 .panel-item {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #C8C8D2;
-    padding: 0.5rem 0;
+    padding: 0.4rem 0;
     border-bottom: 1px solid #1A1A22;
 }
 .panel-item:last-child {border-bottom: none;}
@@ -148,12 +154,11 @@ button[kind="primary"] {
     background: #E10600 !important;
     border: none !important;
     border-radius: 2px !important;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 0.72rem !important;
-    font-weight: 500 !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
     letter-spacing: 2.5px !important;
     text-transform: uppercase !important;
-    padding: 0.95rem 2rem !important;
+    padding: 0.75rem 1.8rem !important;
     transition: opacity 0.25s ease !important;
 }
 button[kind="primary"]:hover {opacity: 0.82 !important;}
@@ -163,10 +168,10 @@ button[kind="secondary"] {
     border-left: 2px solid #33333D !important;
     border-radius: 2px !important;
     color: #B8B8C2 !important;
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
     font-weight: 400 !important;
     text-align: left !important;
-    padding: 0.85rem 1rem !important;
+    padding: 0.6rem 0.9rem !important;
     transition: border-left-color 0.25s ease, color 0.25s ease, background 0.25s ease !important;
 }
 button[kind="secondary"] p {text-align: left !important;}
@@ -176,6 +181,62 @@ button[kind="secondary"]:hover {
     background: #101017 !important;
 }
 
+.next-row {
+    display: flex;
+    align-items: center;
+    gap: 2.4rem;
+    margin: 2.2rem 0 2.4rem 0;
+}
+.track-bg {
+    flex: 0 0 auto;
+    width: 165px;
+    height: 165px;
+    pointer-events: none;
+}
+.track-bg path {
+    fill: none;
+    stroke: #E10600;
+}
+.track-line {
+    stroke-width: 2.2;
+    opacity: 0.35;
+}
+.track-dash {
+    stroke-width: 1.4;
+    stroke-dasharray: 3 9;
+    opacity: 0.75;
+    animation: crawl 9s linear infinite;
+}
+@keyframes crawl {
+    to {stroke-dashoffset: -120;}
+}
+.track-car {
+    fill: #FF2A22;
+    filter: drop-shadow(0 0 3px rgba(225, 6, 0, 0.9));
+}
+.next-card {
+    border-left: 2px solid #E10600;
+    padding: 0.2rem 0 0.2rem 1.2rem;
+}
+.next-label {
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #7A7A84;
+    margin-bottom: 0.5rem;
+}
+.next-race {
+    font-weight: 700;
+    font-size: 1.55rem;
+    color: #F5F5F0;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+}
+.next-meta {
+    font-size: 0.85rem;
+    color: #9A9AA5;
+    margin-top: 0.35rem;
+}
 .suggest-label {
     font-size: 0.62rem;
     letter-spacing: 2.5px;
@@ -235,7 +296,7 @@ def get_chat():
             tools.get_teammate_scorecard, tools.get_pit_stop_scorecard, tools.get_sprint_result,
             tools.get_next_race, tools.get_championship_standings, tools.get_constructor_standings,
             tools.get_driver_season_results, tools.get_race_summary,
-            tools.get_race_control_messages,
+            tools.get_race_control_messages, tools.get_season_calendar, tools.get_driver_career_stats,
         ],
     )
     return client.chats.create(model=GEMINI_MODEL, config=config)
@@ -321,6 +382,79 @@ def render_landing():
     """, unsafe_allow_html=True)
 
 
+CHAT_STARTERS = [
+    "Who's leading the championship?",
+    'How did Verstappen do last season?',
+    'Which team had the best pit stops in 2025?',
+]
+
+
+@st.cache_data
+def next_race_circuit_path():
+    """The real circuit outline for the upcoming race, traced from lap telemetry."""
+    conn = sqlite3.connect(tools.DB_PATH)
+    try:
+        # must be the outline for THAT race's circuit, never the next circuit that happens to have one
+        row = pd.read_sql("""
+            SELECT co.svg_path
+            FROM (
+                SELECT circuit_id FROM dim_race
+                WHERE race_date >= date('now')
+                ORDER BY race_date ASC LIMIT 1
+            ) next_race
+            LEFT JOIN circuit_outline co ON next_race.circuit_id = co.circuit_id
+        """, conn)
+        if len(row) == 0 or pd.isna(row.svg_path.iloc[0]):
+            return None
+        return row.svg_path.iloc[0]
+    except Exception:
+        return None
+    finally:
+        conn.close()
+
+
+def track_svg():
+    path = next_race_circuit_path()
+    if not path:
+        return ''
+    return (
+        '<svg class="track-bg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">'
+        f'<path class="track-line" d="{path}"/>'
+        f'<path class="track-dash" d="{path}"/>'
+        '<circle class="track-car" r="2.1">'
+        f'<animateMotion dur="7s" repeatCount="indefinite" rotate="auto" path="{path}"/>'
+        '</circle></svg>'
+    )
+
+
+def render_empty_state():
+    race = tools.get_next_race()
+    if race.get('found'):
+        try:
+            when = datetime.strptime(race['race_date'][:10], '%Y-%m-%d').strftime('%d %B %Y')
+        except (ValueError, TypeError):
+            when = race['race_date']
+        st.markdown(
+            '<div class="next-row">'
+            '<div class="next-card">'
+            f'<div class="next-label">Next race &middot; Round {race["round"]}</div>'
+            f'<div class="next-race">{race["race_name"]}</div>'
+            f'<div class="next-meta">{race["circuit_name"]}, {race["country"]}'
+            f' &nbsp;&middot;&nbsp; {when}</div>'
+            '</div>'
+            f'{track_svg()}'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="suggest-label">Start with</div>', unsafe_allow_html=True)
+    cols = st.columns(len(CHAT_STARTERS), gap='small')
+    for col, starter in zip(cols, CHAT_STARTERS):
+        if col.button(starter, key=f'st_{starter}', width='stretch'):
+            st.session_state.pending_prompt = starter
+            st.rerun()
+
+
 def reset_conversation():
     st.session_state.view = 'landing'
     st.session_state.display_history = []
@@ -330,20 +464,16 @@ def reset_conversation():
 
 
 def render_chat():
-    left, right = st.columns([3, 1], vertical_alignment='center')
-    with left:
-        if st.button('Grand Prix Insights', type='tertiary', key='go_home'):
-            reset_conversation()
-            st.rerun()
-    with right:
-        st.markdown(
-            f'<div class="chat-meta">{answer_policy.MIN_YEAR}&ndash;{answer_policy.MAX_YEAR}</div>',
-            unsafe_allow_html=True,
-        )
+    if st.button('Grand Prix Insights', type='tertiary', key='go_home'):
+        reset_conversation()
+        st.rerun()
     st.markdown('<div class="head-rule"></div>', unsafe_allow_html=True)
 
     registry.load_models()
     registry.load_explainers()
+
+    if not st.session_state.display_history:
+        render_empty_state()
 
     for msg in st.session_state.display_history:
         with st.chat_message(msg['role']):

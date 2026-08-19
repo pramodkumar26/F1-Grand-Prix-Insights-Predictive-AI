@@ -1,14 +1,23 @@
 import re
 import sqlite3
 import difflib
+import unicodedata
 import pandas as pd
 
 DB_PATH = 'f1.db'
 
 
+def _fold(text):
+    """Strip accents so 'Sao Paulo' matches 'São Paulo' and 'Raikkonen' matches 'Räikkönen'."""
+    if text is None:
+        return text
+    normalized = unicodedata.normalize('NFKD', str(text))
+    return ''.join(c for c in normalized if not unicodedata.combining(c)).lower()
+
+
 def _word_match(series, query):
-    pattern = r'\b' + re.escape(query) + r'\b'
-    return series.str.lower().str.contains(pattern, na=False, regex=True)
+    pattern = r'\b' + re.escape(_fold(query)) + r'\b'
+    return series.map(_fold).str.contains(pattern, na=False, regex=True)
 
 
 def resolve_driver(name_or_code, conn=None):
@@ -18,13 +27,13 @@ def resolve_driver(name_or_code, conn=None):
     if close:
         conn.close()
 
-    query = name_or_code.strip().lower()
+    query = _fold(name_or_code.strip())
 
-    code_match = drivers[drivers.driver_code.str.lower() == query]
+    code_match = drivers[drivers.driver_code.map(_fold) == query]
     if len(code_match) == 1:
         return code_match.iloc[0].to_dict()
 
-    exact_name = drivers[drivers.driver_name.str.lower() == query]
+    exact_name = drivers[drivers.driver_name.map(_fold) == query]
     if len(exact_name) == 1:
         return exact_name.iloc[0].to_dict()
 
@@ -34,9 +43,10 @@ def resolve_driver(name_or_code, conn=None):
     if len(substr_match) > 1:
         return {'ambiguous': True, 'candidates': substr_match.driver_name.tolist()}
 
-    close_names = difflib.get_close_matches(query, drivers.driver_name.str.lower(), n=1, cutoff=0.6)
+    folded_names = drivers.driver_name.map(_fold)
+    close_names = difflib.get_close_matches(query, folded_names, n=1, cutoff=0.6)
     if close_names:
-        row = drivers[drivers.driver_name.str.lower() == close_names[0]].iloc[0]
+        row = drivers[folded_names == close_names[0]].iloc[0]
         return row.to_dict()
 
     return None
@@ -55,7 +65,7 @@ def resolve_race(race_text, year=None, conn=None):
     if year is not None:
         races = races[races.year == int(year)]
 
-    query = race_text.strip().lower()
+    query = _fold(race_text.strip())
     match = races[
         _word_match(races.race_name, query)
         | _word_match(races.circuit_name, query)
@@ -79,9 +89,9 @@ def resolve_team(name, conn=None):
     if close:
         conn.close()
 
-    query = name.strip().lower()
+    query = _fold(name.strip())
 
-    exact = teams[teams.team_name.str.lower() == query]
+    exact = teams[teams.team_name.map(_fold) == query]
     if len(exact) == 1:
         return exact.iloc[0].to_dict()
 
@@ -91,9 +101,10 @@ def resolve_team(name, conn=None):
     if len(substr_match) > 1:
         return {'ambiguous': True, 'candidates': substr_match.team_name.tolist()}
 
-    close_names = difflib.get_close_matches(query, teams.team_name.str.lower(), n=1, cutoff=0.6)
+    folded_names = teams.team_name.map(_fold)
+    close_names = difflib.get_close_matches(query, folded_names, n=1, cutoff=0.6)
     if close_names:
-        row = teams[teams.team_name.str.lower() == close_names[0]].iloc[0]
+        row = teams[folded_names == close_names[0]].iloc[0]
         return row.to_dict()
 
     return None

@@ -2436,6 +2436,26 @@ DriverNumber,BroadcastName,Abbreviation,DriverId,TeamName,TeamColor,TeamId,First
 35,S SIROTKIN,SIR,sirotkin,Williams,FFFFFF,williams,Sergey,Sirotkin,Sergey Sirotkin,,,18.0,18,13.0,,,,,+2 Laps,0.0,51.0,2018,16
 10,P GASLY,GAS,gasly,Toro Rosso,469BFF,toro_rosso,Pierre,Gasly,Pierre Gasly,,,19.0,R,17.0,,,,,Brakes,0.0,4.0,2018,16
 28,B HARTLEY,HAR,brendon_hartley,Toro Rosso,469BFF,toro_rosso,Brendon,Hartley,Brendon Hartley,,,20.0,R,20.0,,,,,Brakes,0.0,4.0,2018,16
+44,L HAMILTON,HAM,hamilton,Mercedes,00D2BE,mercedes,Lewis,Hamilton,Lewis Hamilton,,,1.0,1,3.0,,,,0 days 01:16:54.484000,Finished,25.0,53.0,2018,14
+7,K RAIKKONEN,RAI,raikkonen,Ferrari,DC0000,ferrari,Kimi,Räikkönen,Kimi Räikkönen,,,2.0,2,1.0,,,,0 days 00:00:08.705000,Finished,18.0,53.0,2018,14
+77,V BOTTAS,BOT,bottas,Mercedes,00D2BE,mercedes,Valtteri,Bottas,Valtteri Bottas,,,3.0,3,4.0,,,,0 days 00:00:14.066000,Finished,15.0,53.0,2018,14
+5,S VETTEL,VET,vettel,Ferrari,DC0000,ferrari,Sebastian,Vettel,Sebastian Vettel,,,4.0,4,2.0,,,,0 days 00:00:16.151000,Finished,12.0,53.0,2018,14
+33,M VERSTAPPEN,VER,max_verstappen,Red Bull Racing,1E41FF,red_bull,Max,Verstappen,Max Verstappen,,,5.0,5,5.0,,,,0 days 00:00:18.208000,Finished,10.0,53.0,2018,14
+31,E OCON,OCO,ocon,Racing Point,f596c8,force_india,Esteban,Ocon,Esteban Ocon,,,6.0,6,8.0,,,,0 days 00:00:57.761000,Finished,8.0,53.0,2018,14
+11,S PEREZ,PER,perez,Racing Point,f596c8,force_india,Sergio,Perez,Sergio Perez,,,7.0,7,14.0,,,,0 days 00:00:58.678000,Finished,6.0,53.0,2018,14
+55,C SAINZ,SAI,sainz,Renault,FFF500,renault,Carlos,Sainz,Carlos Sainz,,,8.0,8,7.0,,,,0 days 00:01:18.140000,Finished,4.0,53.0,2018,14
+18,L STROLL,STR,stroll,Williams,FFFFFF,williams,Lance,Stroll,Lance Stroll,,,9.0,9,10.0,,,,,+1 Lap,2.0,52.0,2018,14
+35,S SIROTKIN,SIR,sirotkin,Williams,FFFFFF,williams,Sergey,Sirotkin,Sergey Sirotkin,,,10.0,10,12.0,,,,,+1 Lap,1.0,52.0,2018,14
+16,C LECLERC,LEC,leclerc,Sauber,9B0000,sauber,Charles,Leclerc,Charles Leclerc,,,11.0,11,15.0,,,,,+1 Lap,0.0,52.0,2018,14
+2,S VANDOORNE,VAN,vandoorne,McLaren,FF8700,mclaren,Stoffel,Vandoorne,Stoffel Vandoorne,,,12.0,12,17.0,,,,,+1 Lap,0.0,52.0,2018,14
+27,N HULKENBERG,HUL,hulkenberg,Renault,FFF500,renault,Nico,Hulkenberg,Nico Hulkenberg,,,13.0,13,20.0,,,,,+1 Lap,0.0,52.0,2018,14
+10,P GASLY,GAS,gasly,Toro Rosso,469BFF,toro_rosso,Pierre,Gasly,Pierre Gasly,,,14.0,14,9.0,,,,,+1 Lap,0.0,52.0,2018,14
+9,M ERICSSON,ERI,ericsson,Sauber,9B0000,sauber,Marcus,Ericsson,Marcus Ericsson,,,15.0,15,18.0,,,,,+1 Lap,0.0,52.0,2018,14
+20,K MAGNUSSEN,MAG,kevin_magnussen,Haas F1 Team,828282,haas,Kevin,Magnussen,Kevin Magnussen,,,16.0,16,11.0,,,,,+1 Lap,0.0,52.0,2018,14
+3,D RICCIARDO,RIC,ricciardo,Red Bull Racing,1E41FF,red_bull,Daniel,Ricciardo,Daniel Ricciardo,,,17.0,R,19.0,,,,,Engine,0.0,23.0,2018,14
+14,F ALONSO,ALO,alonso,McLaren,FF8700,mclaren,Fernando,Alonso,Fernando Alonso,,,18.0,R,13.0,,,,,Engine,0.0,9.0,2018,14
+28,B HARTLEY,HAR,brendon_hartley,Toro Rosso,469BFF,toro_rosso,Brendon,Hartley,Brendon Hartley,,,19.0,R,16.0,,,,,Brakes,0.0,0.0,2018,14
+8,R GROSJEAN,GRO,grosjean,Haas F1 Team,828282,haas,Romain,Grosjean,Romain Grosjean,,,20.0,D,6.0,,,,,Disqualified,0.0,53.0,2018,14
 77,V BOTTAS,BOT,bottas,Mercedes,00D2BE,mercedes,Valtteri,Bottas,Valtteri Bottas,https://www.formula1.com/content/dam/fom-website/drivers/V/VALBOT01_Valtteri_Bottas/valbot01.png.transform/1col/image.png,,1.0,1,3.0,,,,0 days 01:34:00.364000,Finished,26.0,53.0,2020,10
 33,M VERSTAPPEN,VER,max_verstappen,Red Bull Racing,1E41FF,red_bull,Max,Verstappen,Max Verstappen,https://www.formula1.com/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png.transform/1col/image.png,,2.0,2,2.0,,,,0 days 00:00:07.729000,Finished,18.0,53.0,2020,10
 44,L HAMILTON,HAM,hamilton,Mercedes,00D2BE,mercedes,Lewis,Hamilton,Lewis Hamilton,https://www.formula1.com/content/dam/fom-website/drivers/L/LEWHAM01_Lewis_Hamilton/lewham01.png.transform/1col/image.png,,3.0,3,1.0,,,,0 days 00:00:22.729000,Finished,15.0,53.0,2020,10

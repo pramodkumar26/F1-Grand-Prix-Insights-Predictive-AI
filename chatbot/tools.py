@@ -38,6 +38,25 @@ def _scalar(conn, query, params):
     return row.iloc[0, 0] if len(row) else None
 
 
+def _nullable(conn, query, params):
+    """Like _scalar, but a missing value becomes NaN (float) rather than None, so a single-row
+    DataFrame column keeps a proper numeric dtype instead of collapsing to dtype=object - which
+    both XGBoost and MLflow's pyfunc schema enforcement reject outright."""
+    value = _scalar(conn, query, params)
+    return float('nan') if value is None else value
+
+
+def _season_progress(conn, year):
+    """A season only has a champion once every scheduled round has been run."""
+    completed = _scalar(conn,
+        "SELECT COUNT(DISTINCT fr.race_id) FROM fact_race_results fr JOIN dim_race r ON fr.race_id = r.race_id WHERE r.year = ?",
+        (int(year),))
+    scheduled = _scalar(conn, "SELECT COUNT(*) FROM dim_race WHERE year = ?", (int(year),))
+    completed = int(completed or 0)
+    scheduled = int(scheduled or 0)
+    return completed, scheduled, (scheduled > 0 and completed >= scheduled)
+
+
 def _clean(value):
     """Tool results get serialised to JSON, which accepts neither NaN nor numpy scalars."""
     if value is None:
@@ -70,41 +89,41 @@ def build_shared_row(driver_id, race_id, team_id, conn):
     row = {}
     row['grid_position'] = _scalar(conn,
         "SELECT grid_position FROM fact_race_results WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['team_strength'] = _scalar(conn,
+    row['team_strength'] = _nullable(conn,
         "SELECT DISTINCT team_strength FROM team_strength WHERE race_id=? AND team_id=?", (race_id, team_id))
-    row['driver_form'] = _scalar(conn,
+    row['driver_form'] = _nullable(conn,
         "SELECT driver_form FROM driver_form WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['qualifying_pace_delta'] = _scalar(conn,
+    row['qualifying_pace_delta'] = _nullable(conn,
         "SELECT qualifying_pace_delta FROM qualifying_pace_delta WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['qualifying_gap_to_pole'] = _scalar(conn,
+    row['qualifying_gap_to_pole'] = _nullable(conn,
         "SELECT qualifying_gap_to_pole FROM qualifying_gap_to_pole WHERE race_id=? AND driver_id=?", (race_id, driver_id))
     return pd.DataFrame([row])[SHARED_FEATURES]
 
 
 def build_strategy_shift_row(driver_id, race_id, team_id, conn):
     row = {}
-    row['strategic_aggressiveness'] = _scalar(conn,
+    row['strategic_aggressiveness'] = _nullable(conn,
         "SELECT strategic_aggressiveness FROM strategic_aggressiveness WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['track_difficulty_index'] = _scalar(conn,
+    row['track_difficulty_index'] = _nullable(conn,
         "SELECT track_difficulty_index FROM track_difficulty_index WHERE race_id=?", (race_id,))
-    row['pit_stop_delta'] = _scalar(conn,
+    row['pit_stop_delta'] = _nullable(conn,
         "SELECT pit_stop_delta FROM pit_stop_delta WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['primary_degradation_rate'] = _scalar(conn,
+    row['primary_degradation_rate'] = _nullable(conn,
         """SELECT fuel_adjusted_degradation_rate FROM tyre_degradation_adjusted
            WHERE race_id=? AND driver_id=? ORDER BY lap_count DESC LIMIT 1""", (race_id, driver_id))
     row['grid_position'] = _scalar(conn,
         "SELECT grid_position FROM fact_race_results WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['team_strength'] = _scalar(conn,
+    row['team_strength'] = _nullable(conn,
         "SELECT DISTINCT team_strength FROM team_strength WHERE race_id=? AND team_id=?", (race_id, team_id))
-    row['driver_form'] = _scalar(conn,
+    row['driver_form'] = _nullable(conn,
         "SELECT driver_form FROM driver_form WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['qualifying_pace_delta'] = _scalar(conn,
+    row['qualifying_pace_delta'] = _nullable(conn,
         "SELECT qualifying_pace_delta FROM qualifying_pace_delta WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['is_wet_race'] = _scalar(conn,
+    row['is_wet_race'] = _nullable(conn,
         "SELECT is_wet_race FROM race_wet_flag WHERE race_id=?", (race_id,))
-    row['pace_consistency'] = _scalar(conn,
+    row['pace_consistency'] = _nullable(conn,
         "SELECT pace_consistency FROM pace_consistency WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['pit_stop_count'] = _scalar(conn,
+    row['pit_stop_count'] = _nullable(conn,
         "SELECT MAX(stint_number) FROM fact_laps WHERE race_id=? AND driver_id=?", (race_id, driver_id))
     return pd.DataFrame([row])[STRATEGY_SHIFT_FEATURES]
 
@@ -113,15 +132,15 @@ def build_overtaking_row(driver_id, race_id, team_id, conn):
     row = {}
     row['grid_position'] = _scalar(conn,
         "SELECT grid_position FROM fact_race_results WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['team_strength'] = _scalar(conn,
+    row['team_strength'] = _nullable(conn,
         "SELECT DISTINCT team_strength FROM team_strength WHERE race_id=? AND team_id=?", (race_id, team_id))
-    row['driver_overtake_trailing'] = _scalar(conn,
+    row['driver_overtake_trailing'] = _nullable(conn,
         "SELECT driver_overtake_trailing FROM driver_overtake_trailing WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['qualifying_pace_delta'] = _scalar(conn,
+    row['qualifying_pace_delta'] = _nullable(conn,
         "SELECT qualifying_pace_delta FROM qualifying_pace_delta WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['qualifying_gap_to_pole'] = _scalar(conn,
+    row['qualifying_gap_to_pole'] = _nullable(conn,
         "SELECT qualifying_gap_to_pole FROM qualifying_gap_to_pole WHERE race_id=? AND driver_id=?", (race_id, driver_id))
-    row['circuit_overtake_trailing'] = _scalar(conn,
+    row['circuit_overtake_trailing'] = _nullable(conn,
         "SELECT circuit_overtake_trailing FROM circuit_overtake_trailing WHERE race_id=?", (race_id,))
     return pd.DataFrame([row])[OVERTAKING_FEATURES]
 
@@ -143,8 +162,8 @@ def _predict_classifier(driver, race, year, model_key):
         if error:
             return error
         result = get_result_row(d['driver_id'], r['race_id'], conn)
-        if result is None:
-            return {'found': False, 'reason': f"{d['driver_name']} has no result on record for {r['race_name']} {r['year']}"}
+        if result is None or pd.isna(result.grid_position):
+            return {'found': False, 'reason': f"{d['driver_name']} did not start {r['race_name']} {r['year']} (no grid position on record, likely a withdrawal)"}
         X = build_shared_row(d['driver_id'], r['race_id'], int(result.team_id), conn)
         models = load_models()
         explainers = load_explainers()
@@ -178,8 +197,8 @@ def predict_points(driver: str, race: str, year: int) -> dict:
         if error:
             return error
         result = get_result_row(d['driver_id'], r['race_id'], conn)
-        if result is None:
-            return {'found': False, 'reason': f"{d['driver_name']} has no result on record for {r['race_name']} {r['year']}"}
+        if result is None or pd.isna(result.grid_position):
+            return {'found': False, 'reason': f"{d['driver_name']} did not start {r['race_name']} {r['year']} (no grid position on record, likely a withdrawal)"}
         X = build_shared_row(d['driver_id'], r['race_id'], int(result.team_id), conn)
         models = load_models()
         explainers = load_explainers()
@@ -203,8 +222,8 @@ def explain_strategy_shift(driver: str, race: str, year: int) -> dict:
         if error:
             return error
         result = get_result_row(d['driver_id'], r['race_id'], conn)
-        if result is None:
-            return {'found': False, 'reason': f"{d['driver_name']} has no result on record for {r['race_name']} {r['year']}"}
+        if result is None or pd.isna(result.grid_position):
+            return {'found': False, 'reason': f"{d['driver_name']} did not start {r['race_name']} {r['year']} (no grid position on record, likely a withdrawal)"}
         X = build_strategy_shift_row(d['driver_id'], r['race_id'], int(result.team_id), conn)
         models = load_models()
         explainers = load_explainers()
@@ -230,8 +249,8 @@ def estimate_overtakes(driver: str, race: str, year: int) -> dict:
         if error:
             return error
         result = get_result_row(d['driver_id'], r['race_id'], conn)
-        if result is None:
-            return {'found': False, 'reason': f"{d['driver_name']} has no result on record for {r['race_name']} {r['year']}"}
+        if result is None or pd.isna(result.grid_position):
+            return {'found': False, 'reason': f"{d['driver_name']} did not start {r['race_name']} {r['year']} (no grid position on record, likely a withdrawal)"}
         X = build_overtaking_row(d['driver_id'], r['race_id'], int(result.team_id), conn)
         models = load_models()
         point_estimate = float(models['overtaking'].predict(X)[0])
@@ -404,8 +423,8 @@ def get_race_control_messages(race: str, year: int) -> dict:
         conn.close()
 
 
-def get_driver_season_results(driver: str, year: int) -> dict:
-    """Look up a driver's race-by-race results for a whole season - every race they entered, with grid position, finishing position, points scored and status (finished, retired, disqualified). This is a measured fact from historical results, not a prediction."""
+def get_driver_season_results(driver: str, year: int = None) -> dict:
+    """Look up a driver's season: which team or teams they drove for, and their race-by-race results with grid position, finishing position, points and status. Use this to answer which team a driver races for. If no year is given it uses the most recent season with results. This is a measured fact from historical results, not a prediction."""
     conn = sqlite3.connect(DB_PATH)
     try:
         d = resolve_driver(driver)
@@ -413,6 +432,13 @@ def get_driver_season_results(driver: str, year: int) -> dict:
             return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
         if isinstance(d, dict) and d.get('ambiguous'):
             return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+        if year is None:
+            year = _scalar(conn, """
+                SELECT MAX(r.year) FROM fact_race_results fr
+                JOIN dim_race r ON fr.race_id = r.race_id WHERE fr.driver_id = ?
+            """, (d['driver_id'],))
+            if year is None:
+                return {'found': False, 'reason': f"no race results on record for {d['driver_name']}"}
         results = pd.read_sql("""
             SELECT r.round, r.race_name, t.team_name, fr.grid_position,
                    fr.finish_position, fr.points, fr.status
@@ -459,13 +485,12 @@ def get_championship_standings(year: int = None) -> dict:
             ) sp ON dr.driver_id = sp.driver_id
             ORDER BY total_points DESC
         """, conn, params=(int(year), int(year)))
-        races_so_far = _scalar(conn,
-            "SELECT COUNT(DISTINCT fr.race_id) FROM fact_race_results fr JOIN dim_race r ON fr.race_id = r.race_id WHERE r.year=?",
-            (int(year),))
+        completed, scheduled, finished = _season_progress(conn, year)
         if len(standings) == 0:
             return {'found': False, 'reason': f'no race results found for {year}'}
         return {
-            'found': True, 'year': int(year), 'races_completed': int(races_so_far),
+            'found': True, 'year': int(year), 'races_completed': completed,
+            'races_scheduled': scheduled, 'season_complete': finished,
             'confidence_tier': 'measured_fact', 'standings': _records(standings),
         }
     except Exception as e:
@@ -496,14 +521,69 @@ def get_constructor_standings(year: int = None) -> dict:
             ) sp ON dt.team_id = sp.team_id
             ORDER BY total_points DESC
         """, conn, params=(int(year), int(year)))
-        races_so_far = _scalar(conn,
-            "SELECT COUNT(DISTINCT fr.race_id) FROM fact_race_results fr JOIN dim_race r ON fr.race_id = r.race_id WHERE r.year=?",
-            (int(year),))
+        completed, scheduled, finished = _season_progress(conn, year)
         if len(standings) == 0:
             return {'found': False, 'reason': f'no race results found for {year}'}
         return {
-            'found': True, 'year': int(year), 'races_completed': int(races_so_far),
+            'found': True, 'year': int(year), 'races_completed': completed,
+            'races_scheduled': scheduled, 'season_complete': finished,
             'confidence_tier': 'measured_fact', 'standings': _records(standings),
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
+def get_season_calendar(year: int) -> dict:
+    """Look up the full race calendar for a season: every round, race name, circuit, country and date, whether or not that race has happened yet. Use this for questions about a season's schedule, not just the single next race. This is measured/scheduled fact, not a prediction."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        races = pd.read_sql("""
+            SELECT dr.round, dr.race_name, dc.circuit_name, dc.country, dr.race_date,
+                   CASE WHEN dr.race_date < date('now') THEN 1 ELSE 0 END AS already_happened
+            FROM dim_race dr JOIN dim_circuit dc ON dr.circuit_id = dc.circuit_id
+            WHERE dr.year = ?
+            ORDER BY dr.round
+        """, conn, params=(int(year),))
+        if len(races) == 0:
+            return {'found': False, 'reason': f'no calendar on record for {year}'}
+        return {
+            'found': True, 'confidence_tier': 'measured_fact',
+            'year': int(year), 'total_races': len(races), 'races': _records(races),
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
+def get_driver_career_stats(driver: str) -> dict:
+    """Look up a driver's career totals across every season in the dataset (2018-2026): total races entered, wins, podiums, points, and the first and last season they appear in. Use this for career-spanning questions like total wins, not a single season. This is a measured fact from historical results, not a prediction."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        d = resolve_driver(driver)
+        if d is None:
+            return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+        if isinstance(d, dict) and d.get('ambiguous'):
+            return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+        stats = pd.read_sql("""
+            SELECT COUNT(*) AS races_entered,
+                   SUM(CASE WHEN fr.finish_position = 1 THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN fr.finish_position <= 3 THEN 1 ELSE 0 END) AS podiums,
+                   SUM(fr.points) AS total_points,
+                   MIN(r.year) AS first_season, MAX(r.year) AS last_season
+            FROM fact_race_results fr JOIN dim_race r ON fr.race_id = r.race_id
+            WHERE fr.driver_id = ?
+        """, conn, params=(d['driver_id'],))
+        row = stats.iloc[0]
+        if len(stats) == 0 or row.races_entered == 0:
+            return {'found': False, 'reason': f"no race results on record for {d['driver_name']}"}
+        return {
+            'found': True, 'driver': d['driver_name'], 'confidence_tier': 'measured_fact',
+            'races_entered': int(row.races_entered), 'wins': int(row.wins), 'podiums': int(row.podiums),
+            'total_points': float(row.total_points),
+            'first_season': int(row.first_season), 'last_season': int(row.last_season),
         }
     except Exception as e:
         return {'found': False, 'reason': f'lookup failed: {e}'}

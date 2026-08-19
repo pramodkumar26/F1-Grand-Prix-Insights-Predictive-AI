@@ -1,7 +1,10 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+# f1.db and the mlruns artifacts are both looked up relative to the working directory
+os.chdir(PROJECT_ROOT)
 
 import streamlit as st
 from google import genai

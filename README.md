@@ -1,5 +1,7 @@
 # Grand Prix Insights
 
+**[Try the chatbot →](https://pramodkumar26-f1-grand-prix-insights-predicti-chatbotapp-jyllrt.streamlit.app/)**
+
 This is a Formula 1 data project where I pull real race data from 2018
 through the current 2026 season and use it to build machine learning
 models. The original goal was

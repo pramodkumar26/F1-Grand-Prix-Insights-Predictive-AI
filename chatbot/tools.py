@@ -738,6 +738,64 @@ def predict_upcoming_race(driver: str = None) -> dict:
         conn.close()
 
 
+def get_qualifying_results(race: str = None, year: int = None, driver: str = None) -> dict:
+    """Look up Grand Prix qualifying results: the session that sets the starting grid for the race, with each driver's position, best lap and gap to pole. Give a race and year, or give nothing to get the most recent qualifying session on record, which is what to use for questions about today's or the latest qualifying. Add a driver to narrow it to one. This is the main qualifying session, which is a different session from sprint qualifying. This is a measured fact, not a prediction."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if race is None:
+            latest = pd.read_sql("""
+                SELECT q.race_id, r.race_name, r.year FROM fact_qualifying_results q
+                JOIN dim_race r ON q.race_id = r.race_id
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn)
+            if len(latest) == 0:
+                return {'found': False, 'reason': 'no qualifying results on record'}
+            race_id = int(latest.race_id.iloc[0])
+            race_name, race_year = latest.race_name.iloc[0], int(latest.year.iloc[0])
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id, race_name, race_year = r['race_id'], r['race_name'], r['year']
+
+        rows = pd.read_sql("""
+            SELECT q.quali_position, d.driver_name, t.team_name, q.best_quali_lap
+            FROM fact_qualifying_results q
+            JOIN dim_driver d ON q.driver_id = d.driver_id
+            LEFT JOIN dim_team t ON q.team_id = t.team_id
+            WHERE q.race_id = ?
+            ORDER BY q.quali_position
+        """, conn, params=(race_id,))
+        if len(rows) == 0:
+            return {'found': False, 'reason': f"no qualifying results on record for {race_name} {race_year}, that session may not have run yet"}
+
+        pole = rows.best_quali_lap.min()
+        rows['gap_to_pole'] = (rows.best_quali_lap - pole).round(3)
+
+        if driver:
+            d = resolve_driver(driver)
+            if d is None:
+                return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+            if isinstance(d, dict) and d.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+            rows = rows[rows.driver_name == d['driver_name']]
+            if len(rows) == 0:
+                return {'found': False, 'reason': f"{d['driver_name']} has no qualifying record for {race_name} {race_year}"}
+
+        return {
+            'found': True, 'race': race_name, 'year': race_year,
+            'session': 'Grand Prix qualifying, which sets the race starting grid',
+            'confidence_tier': 'measured_fact',
+            'qualifying_results': _records(rows),
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
 def get_sprint_qualifying(race: str = None, year: int = None, driver: str = None) -> dict:
     """Look up sprint qualifying results: the starting order for a sprint race, with each driver's best sprint qualifying lap and gap to sprint pole. Give a race and year, or give nothing at all to get the most recent sprint qualifying session on record, which is what to use for questions about today's or the upcoming sprint. Add a driver to narrow it to one. Sprint qualifying runs before the sprint, so this is available even when the sprint itself has not been run yet. This is a measured fact, not a prediction of the sprint outcome."""
     conn = sqlite3.connect(DB_PATH)

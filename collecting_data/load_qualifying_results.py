@@ -54,6 +54,20 @@ def main():
 
     already = set(pd.read_sql('SELECT DISTINCT race_id FROM fact_qualifying_results', conn).race_id)
 
+    def resolve_team_id(team_name, driver_id):
+        """FastF1's team naming shifts between versions, so a direct match can miss. Fall
+        back to whoever this driver last actually raced for rather than storing a null."""
+        team_id = team_lookup.get(team_name)
+        if team_id is not None:
+            return team_id
+        recent = pd.read_sql("""
+            SELECT fr.team_id FROM fact_race_results fr
+            JOIN dim_race r ON fr.race_id = r.race_id
+            WHERE fr.driver_id = ? AND fr.team_id IS NOT NULL
+            ORDER BY r.race_date DESC LIMIT 1
+        """, conn, params=(driver_id,))
+        return int(recent.team_id.iloc[0]) if len(recent) else None
+
     inserted = 0
     for year in YEARS:
         try:
@@ -93,7 +107,7 @@ def main():
                 conn.execute(
                     'INSERT OR IGNORE INTO fact_qualifying_results '
                     '(race_id, driver_id, team_id, quali_position, best_quali_lap) VALUES (?, ?, ?, ?, ?)',
-                    (int(race_id), int(driver_id), team_lookup.get(r['TeamName']),
+                    (int(race_id), int(driver_id), resolve_team_id(r['TeamName'], int(driver_id)),
                      int(r['Position']), best_lap_seconds(r))
                 )
                 rows += 1

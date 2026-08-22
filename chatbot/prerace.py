@@ -69,8 +69,14 @@ def has_result(conn, race_id):
 def qualifying_grid(conn, race_id):
     """The starting order as qualified. Grid penalties are applied after qualifying and
     are not published anywhere we can read before the race, so this is a close proxy
-    rather than the certain grid - measured at roughly 0.003 AUC of accuracy."""
-    return pd.read_sql("""
+    rather than the certain grid - measured at roughly 0.003 AUC of accuracy.
+
+    team_id can be null when FastF1 reports a team name that does not match dim_team,
+    which varies by FastF1 version. team_strength is looked up by team, so a null there
+    would break the prediction entirely. Fall back to the team the driver most recently
+    actually raced for, which is right in every case except a mid-season switch.
+    """
+    grid = pd.read_sql("""
         SELECT q.driver_id, q.team_id, q.quali_position, d.driver_name, t.team_name
         FROM fact_qualifying_results q
         JOIN dim_driver d ON q.driver_id = d.driver_id
@@ -78,6 +84,23 @@ def qualifying_grid(conn, race_id):
         WHERE q.race_id = ?
         ORDER BY q.quali_position
     """, conn, params=(race_id,))
+
+    missing = grid.team_id.isna()
+    if missing.any():
+        for idx in grid.index[missing]:
+            recent = pd.read_sql("""
+                SELECT fr.team_id, t.team_name
+                FROM fact_race_results fr
+                JOIN dim_race r ON fr.race_id = r.race_id
+                LEFT JOIN dim_team t ON fr.team_id = t.team_id
+                WHERE fr.driver_id = ? AND fr.team_id IS NOT NULL
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn, params=(int(grid.at[idx, 'driver_id']),))
+            if len(recent):
+                grid.at[idx, 'team_id'] = recent.team_id.iloc[0]
+                grid.at[idx, 'team_name'] = recent.team_name.iloc[0]
+
+    return grid.dropna(subset=['team_id'])
 
 
 def build_prerace_row(conn, driver_id, team_id, race_id, year, round_number, quali_position):

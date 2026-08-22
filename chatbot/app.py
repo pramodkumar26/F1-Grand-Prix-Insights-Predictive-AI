@@ -294,6 +294,7 @@ def get_chat():
             tools.predict_podium, tools.predict_win, tools.predict_points,
             tools.explain_strategy_shift, tools.estimate_overtakes,
             tools.get_teammate_scorecard, tools.get_pit_stop_scorecard, tools.get_sprint_result,
+            tools.get_sprint_qualifying, tools.predict_upcoming_race,
             tools.get_next_race, tools.get_championship_standings, tools.get_constructor_standings,
             tools.get_driver_season_results, tools.get_race_summary,
             tools.get_race_control_messages, tools.get_season_calendar, tools.get_driver_career_stats,

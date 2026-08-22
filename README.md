@@ -10,9 +10,9 @@ question before any model touched it: is this actually predictable, or is
 it something I can just measure directly, or is the pattern not really
 there at all. Five turned out genuinely predictable and became trained
 models. Two turned out to have a directly countable answer and became
-scorecards instead, no model needed. Two got a real, thorough attempt and
-were closed once the data made clear the pattern wasn't reliable enough to
-trust. On top of all of it sits a chatbot that only ever answers from
+scorecards instead, no model needed. Three got a real, thorough attempt
+and were closed once the data made clear the pattern wasn't reliable
+enough to trust. On top of all of it sits a chatbot that only ever answers from
 those model outputs and the real race records in the database, never from
 its own general knowledge, and it says so plainly whenever a question
 falls outside what it actually has.
@@ -22,7 +22,7 @@ falls outside what it actually has.
 The scorecards skip MLflow entirely, on purpose, since there's no model
 there to version, just a query. The chatbot is the only thing that talks
 to Gemini, and Gemini is only ever allowed to respond by calling one of
-its 16 tools, nothing it says is allowed to come from its own training
+its 18 tools, nothing it says is allowed to come from its own training
 data.
 
 ## What the data looks like
@@ -76,8 +76,8 @@ predict one that hasn't happened yet.
 ## The models that worked
 
 These are the five that passed that first test and actually became
-trained models. The two that turned into scorecards instead, and the two
-that got closed, are further down, each with the reasoning behind it.
+trained models. The two that turned into scorecards instead, and the
+three that got closed, are further down, each with the reasoning behind it.
 
 | model | what it predicts | result |
 |---|---|---|
@@ -95,7 +95,7 @@ something that can just be measured would only add error, not remove it,
 so both of these became scorecards instead, a head to head record between
 teammates, and a team level pit stop execution ranking.
 
-## Two things I tried and closed
+## Three things I tried and closed
 
 Tyre degradation and DNF prediction both got a real, thorough attempt and
 both got closed, not because the modeling was weak but because the
@@ -103,7 +103,21 @@ pattern genuinely isn't predictable in this data. Tyre wear at a given
 circuit barely repeats from one season to the next. Team reliability is
 stable year over year, but which specific driver retires from which
 specific race is dominated by things like crashes, which are close to
-random. Both are documented in full rather than abandoned quietly, the
+random.
+
+Sprint race prediction is the third, and it's the one I'd have most
+expected to work. Sprint qualifying happens before the sprint, so the
+grid is a known fact rather than a guess, which makes it look like a fair
+target. I pulled the sprint qualifying data, built sprint-specific pace
+features out of the real lap times, and tested twelve different setups
+using leave-one-weekend-out cross validation. Every one of them was worse
+at picking sprint podiums and winners than just reading the starting grid
+order. That makes sense once you think about it, since a sprint is short
+and has no mandatory pit stop, so far less can reorder the field than in
+a full race. The chatbot now declines sprint predictions and gives you
+the real grid instead, which is both more honest and more accurate.
+
+All three are documented in full rather than abandoned quietly, the
 reasoning behind why something doesn't work is still a real result.
 
 ## Explaining the predictions, not just stating them
@@ -129,7 +143,7 @@ The models, the scorecards, and the tracking above are the inputs. The
 chatbot is what turns them into something you can actually talk to. It's a
 Streamlit app that talks to Google Gemini, and the important part is that
 Gemini never answers from its own knowledge. Every answer has to come back
-through one of sixteen tools that either run a trained model or read a
+through one of eighteen tools that either run a trained model or read a
 real record out of the database.
 
 Those tools split into three kinds, and the chatbot is required to speak
@@ -138,8 +152,9 @@ about them differently:
 - Straight facts, like championship and constructor standings, a driver's
   full season results and career totals, the full season calendar, what
   happened in a given race, the official race control messages from it,
-  teammate head to heads, pit stop rankings, sprint results, and when the
-  next race is. These get stated plainly, because they already happened.
+  teammate head to heads, pit stop rankings, sprint qualifying and sprint
+  results, and when the next race is. These get stated plainly, because
+  they already happened.
 - Model predictions for podium, win, and points. These always come with
   the reason attached, pulled from the same SHAP values described above,
   so it says why it thinks that and not just a bare number.
@@ -151,10 +166,31 @@ The strategy shift model is treated separately again, because it uses
 things that happened during the race. It's only ever allowed to explain a
 race that already finished, never to predict one.
 
-The limits are deliberate and the chatbot admits them. It only knows races
-that are already in the database, so it can't predict an upcoming race, and
-it says so instead of guessing. It can tell you when and where the next
-race is, because a calendar is not a prediction.
+It also predicts the next race properly, which is the part the models were
+actually built for. Once a race weekend has qualified, it gives podium and
+win chances for every driver on that grid, ordered, using the same trained
+models and the same five features they learned from. Before qualifying it
+says it can't, and explains why rather than just refusing, since the
+starting grid is the strongest single input the models use and there's
+nothing real to predict from without it.
+
+Getting that right needed two things the pipeline didn't have. Qualifying
+classification had never been pulled, so the only starting grid in the
+database came from the race results table, which by definition only exists
+after the race has already been run. And every feature table is built from
+the race results too, so a race that hasn't happened gets no features at
+all. Both are now handled, and the trailing features rebuilt on demand for
+an upcoming race were checked against the ones the training pipeline
+stored, matching exactly across every row tested, so a prediction runs on
+the same numbers the models were trained on rather than something close to
+them.
+
+One honest limitation comes with it. Grid penalties are applied after
+qualifying and aren't published anywhere readable before the race, so a
+penalised driver may actually start further back than the prediction
+assumes. I measured what that costs rather than guessing: about 0.003 of
+accuracy, since most penalties shift a driver by a single place. The
+chatbot passes that caveat on rather than hiding it.
 
 
 ## Running it
@@ -181,15 +217,17 @@ repo. To browse the tracked runs and compare model versions directly:
 mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
 ```
 
-## Keeping it current
+## Staying up to date without retraining blindly
 
 A GitHub Actions workflow pulls each new race weekend automatically once
 a day, so the database no longer depends on someone running the pipeline
 by hand. Retraining stays a manual step on purpose, and the workflow
-enforces that by never touching anything under `modeling/`. Every model in
-this project got compared against the previous version before being
+enforces that by never touching anything under `modeling/`. Every model
+in this project got compared against the previous version before being
 adopted, and a job that silently swapped models out on a schedule would
 throw that discipline away for the sake of convenience.
+
+## Where the project's scope actually starts, and why
 
 The dataset covers 2018 onward, which is where FastF1's lap-by-lap data
 starts. Race results and standings go back to 1950 through other sources,

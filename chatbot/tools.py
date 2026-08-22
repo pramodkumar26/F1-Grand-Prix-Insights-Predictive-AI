@@ -4,6 +4,7 @@ import pandas as pd
 
 from chatbot.resolve import resolve_driver, resolve_race, resolve_team
 from chatbot.registry import load_models, load_explainers
+from chatbot import prerace
 
 DB_PATH = 'f1.db'
 
@@ -611,22 +612,172 @@ def get_next_race() -> dict:
         conn.close()
 
 
-def get_sprint_result(driver: str, race: str, year: int) -> dict:
-    """Look up a driver's sprint race result for a given race weekend, if that weekend had a sprint. This is a measured fact from historical results, not a model prediction."""
+def predict_upcoming_race(driver: str = None) -> dict:
+    """Predict the podium and win chances for the next race that has already qualified but has not been run yet. This is a genuine forward-looking prediction, using the same trained models and the qualifying result that sets the grid. Pass a driver for just that driver, or leave it out for the full field ordered by podium chance. Only works once qualifying for that race has happened."""
     conn = sqlite3.connect(DB_PATH)
     try:
-        d, r, error = _resolve_driver_and_race(driver, race, year)
-        if error:
-            return error
-        row = pd.read_sql(
-            "SELECT sprint_grid_position, sprint_finish_position, sprint_points FROM fact_sprint_results WHERE race_id=? AND driver_id=?",
-            conn, params=(r['race_id'], d['driver_id'])
-        )
-        if len(row) == 0:
-            return {'found': False, 'reason': f"{r['race_name']} {r['year']} was not a sprint weekend, or {d['driver_name']} has no sprint record for it"}
+        upcoming = pd.read_sql("""
+            SELECT r.race_id, r.race_name, r.year, r.round, r.race_date
+            FROM dim_race r
+            WHERE EXISTS (SELECT 1 FROM fact_qualifying_results q WHERE q.race_id = r.race_id)
+              AND NOT EXISTS (SELECT 1 FROM fact_race_results fr WHERE fr.race_id = r.race_id)
+            ORDER BY r.race_date
+            LIMIT 1
+        """, conn)
+        if len(upcoming) == 0:
+            return {'found': False, 'reason': 'no upcoming race has qualified yet, so there is nothing to predict from. Qualifying has to happen first.'}
+
+        race = upcoming.iloc[0]
+        grid = prerace.qualifying_grid(conn, int(race.race_id))
+        if len(grid) == 0:
+            return {'found': False, 'reason': f'no qualifying classification stored for {race.race_name} {race.year}'}
+
+        if driver:
+            d = resolve_driver(driver)
+            if d is None:
+                return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+            if isinstance(d, dict) and d.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+            grid = grid[grid.driver_id == d['driver_id']]
+            if len(grid) == 0:
+                return {'found': False, 'reason': f"{d['driver_name']} did not qualify for {race.race_name} {race.year}"}
+
+        models = load_models()
+        explainers = load_explainers()
+        out = []
+        for _, g in grid.iterrows():
+            X = prerace.build_prerace_row(conn, int(g.driver_id), int(g.team_id),
+                                           int(race.race_id), int(race.year), int(race['round']),
+                                           int(g.quali_position))
+            entry = {
+                'driver': g.driver_name, 'team': g.team_name,
+                'starts_from': int(g.quali_position),
+                'podium_chance': round(float(models['podium'].predict_proba(X)[:, 1][0]), 3),
+                'win_chance': round(float(models['win'].predict_proba(X)[:, 1][0]), 3),
+                'predicted_points': round(float(models['points_scored'].predict(X)[0]), 1),
+            }
+            if driver:
+                entry['top_reasons'] = get_shap_reasons(explainers['podium'], X)
+            out.append(entry)
+
+        out.sort(key=lambda e: e['podium_chance'], reverse=True)
         return {
-            'found': True, 'driver': d['driver_name'], 'race': r['race_name'], 'year': r['year'],
-            'confidence_tier': 'measured_fact', **_row(row.iloc[0]),
+            'found': True, 'race': race.race_name, 'year': int(race.year),
+            'race_date': race.race_date, 'confidence_tier': 'confident_prediction',
+            'caveat': 'grid is taken from qualifying. Grid penalties are applied after qualifying and are not published anywhere readable before the race, so a penalised driver may start further back than shown. Measured cost of this is about 0.003 AUC.',
+            'predictions': out,
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
+def get_sprint_qualifying(race: str = None, year: int = None, driver: str = None) -> dict:
+    """Look up sprint qualifying results: the starting order for a sprint race, with each driver's best sprint qualifying lap and gap to sprint pole. Give a race and year, or give nothing at all to get the most recent sprint qualifying session on record, which is what to use for questions about today's or the upcoming sprint. Add a driver to narrow it to one. Sprint qualifying runs before the sprint, so this is available even when the sprint itself has not been run yet. This is a measured fact, not a prediction of the sprint outcome."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if race is None:
+            latest = pd.read_sql("""
+                SELECT sq.race_id, r.race_name, r.year FROM fact_sprint_qualifying sq
+                JOIN dim_race r ON sq.race_id = r.race_id
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn)
+            if len(latest) == 0:
+                return {'found': False, 'reason': 'no sprint qualifying on record'}
+            race_id = int(latest.race_id.iloc[0])
+            race_name, race_year = latest.race_name.iloc[0], int(latest.year.iloc[0])
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id, race_name, race_year = r['race_id'], r['race_name'], r['year']
+
+        rows = pd.read_sql("""
+            SELECT sq.sprint_quali_position, d.driver_name, t.team_name, sq.best_sq_lap
+            FROM fact_sprint_qualifying sq
+            JOIN dim_driver d ON sq.driver_id = d.driver_id
+            LEFT JOIN dim_team t ON sq.team_id = t.team_id
+            WHERE sq.race_id = ?
+            ORDER BY sq.sprint_quali_position
+        """, conn, params=(race_id,))
+        if len(rows) == 0:
+            return {'found': False, 'reason': f"no sprint qualifying on record for {race_name} {race_year}, it may not be a sprint weekend"}
+
+        pole_lap = rows.best_sq_lap.min()
+        rows['gap_to_sprint_pole'] = (rows.best_sq_lap - pole_lap).round(3)
+
+        if driver:
+            d = resolve_driver(driver)
+            if d is None:
+                return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+            if isinstance(d, dict) and d.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+            rows = rows[rows.driver_name == d['driver_name']]
+            if len(rows) == 0:
+                return {'found': False, 'reason': f"{d['driver_name']} has no sprint qualifying record for {race_name} {race_year}"}
+
+        return {
+            'found': True, 'race': race_name, 'year': race_year,
+            'confidence_tier': 'measured_fact',
+            'note': 'this is the starting order for the sprint, not a prediction of how the sprint will finish',
+            'sprint_qualifying': _records(rows),
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
+def get_sprint_result(race: str = None, year: int = None, driver: str = None) -> dict:
+    """Look up sprint race results: the full finishing order for a sprint, or one driver's sprint result. Give a race and year for that weekend's sprint, add a driver to narrow it to one, or give nothing at all to get the most recent sprint that has been run. Use this to answer who won a sprint. This is a measured fact from historical results, not a model prediction."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if race is None:
+            latest = pd.read_sql("""
+                SELECT sr.race_id, r.race_name, r.year FROM fact_sprint_results sr
+                JOIN dim_race r ON sr.race_id = r.race_id
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn)
+            if len(latest) == 0:
+                return {'found': False, 'reason': 'no sprint results on record'}
+            race_id = int(latest.race_id.iloc[0])
+            race_name, race_year = latest.race_name.iloc[0], int(latest.year.iloc[0])
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id, race_name, race_year = r['race_id'], r['race_name'], r['year']
+
+        rows = pd.read_sql("""
+            SELECT sr.sprint_finish_position, d.driver_name, t.team_name,
+                   sr.sprint_grid_position, sr.sprint_points
+            FROM fact_sprint_results sr
+            JOIN dim_driver d ON sr.driver_id = d.driver_id
+            LEFT JOIN dim_team t ON sr.team_id = t.team_id
+            WHERE sr.race_id = ?
+            ORDER BY sr.sprint_finish_position
+        """, conn, params=(race_id,))
+        if len(rows) == 0:
+            return {'found': False, 'reason': f"{race_name} {race_year} was not a sprint weekend, or its sprint has not been run yet"}
+
+        if driver:
+            d = resolve_driver(driver)
+            if d is None:
+                return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+            if isinstance(d, dict) and d.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+            rows = rows[rows.driver_name == d['driver_name']]
+            if len(rows) == 0:
+                return {'found': False, 'reason': f"{d['driver_name']} has no sprint record for {race_name} {race_year}"}
+
+        return {
+            'found': True, 'race': race_name, 'year': race_year,
+            'confidence_tier': 'measured_fact', 'sprint_results': _records(rows),
         }
     except Exception as e:
         return {'found': False, 'reason': f'lookup failed: {e}'}

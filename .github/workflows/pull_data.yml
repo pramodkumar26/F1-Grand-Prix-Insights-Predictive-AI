@@ -2,10 +2,20 @@ name: Pull latest race data
 
 on:
   schedule:
-    # once a day at 06:00 UTC. Every step below skips races it already has, so a
-    # quiet day is a fast no-op run, not a wasted one - see flow.md section on
-    # why this doesn't need to know the F1 calendar.
-    - cron: '0 6 * * *'
+    # Two schedules, not one. FastF1 has no push/webhook for "new data is ready" -
+    # it's a pull-based wrapper, so the closest we can get to "as soon as it's up"
+    # is polling more often specifically when a session could actually have just
+    # finished, and less often when nothing could possibly have changed regardless
+    # of how often we ask.
+    #
+    # Every 3 hours, Fri/Sat/Sun only (day-of-week 5,6,0) - this is the only window
+    # a real session (practice/qualifying/sprint/race) can end, across every
+    # timezone the calendar covers.
+    - cron: '0 */3 * * 5,6,0'
+    # Once a day the rest of the week, as a fallback for the rare midweek
+    # reschedule and general redundancy. Every step below skips races it already
+    # has, so a quiet run is a fast no-op, not a wasted one - see flow.md.
+    - cron: '0 6 * * 1,2,3,4'
   workflow_dispatch: {}
 
 permissions:
@@ -47,6 +57,13 @@ jobs:
           python collecting_data/load_qualifying.py
           python collecting_data/load_race_control.py
           python collecting_data/load_jolpica_sprint_results.py
+          # sprint qualifying sets the sprint grid and runs before the sprint itself,
+          # so this is the one source that is current mid-weekend rather than after it
+          python collecting_data/load_sprint_qualifying.py
+          # qualifying classification is what makes predicting an unraced race possible.
+          # fact_race_results carries a grid position too, but only after the race has
+          # run, which is far too late to predict it.
+          python collecting_data/load_qualifying_results.py
 
       - name: Apply source-level fixes
         run: |

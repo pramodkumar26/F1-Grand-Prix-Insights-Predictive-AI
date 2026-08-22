@@ -8,7 +8,12 @@ DB_PATH = 'f1.db'
 
 
 def get_race_lookup(conn):
-    return pd.read_sql("SELECT race_id, year, round FROM dim_race", conn)
+    # only races that have actually been run. A future race has nothing to fetch, and
+    # asking for one costs a real API call against a 500/hour limit every single run.
+    return pd.read_sql("""
+        SELECT race_id, year, round FROM dim_race
+        WHERE race_date <= date('now')
+    """, conn)
 
 
 def get_driver_lookup(conn):
@@ -24,11 +29,28 @@ def pull_track_status_for_race(year, round_number):
     return laps
 
 
+def already_built(conn):
+    """Races whose flags are already stored, so they never need fetching again."""
+    try:
+        done = pd.read_sql('SELECT DISTINCT race_id FROM lap_flags', conn)
+        return set(done['race_id'])
+    except Exception:
+        return set()
+
+
 def build_lap_flags():
     conn = sqlite3.connect(DB_PATH)
     races = get_race_lookup(conn)
     drivers = get_driver_lookup(conn)
     driver_map = dict(zip(drivers['driver_code'], drivers['driver_id']))
+
+    # This is the only feature builder that reads from the FastF1 API rather than the
+    # database, so it is the only one that can be throttled (500 calls/hour) or run
+    # against a cold cache. It used to refetch every race and write with
+    # if_exists='replace', which meant a throttled run silently rewrote the whole table
+    # from a partial fetch, gutting every feature table built on top of it. Now it only
+    # fetches races it does not already have, and appends.
+    stored = already_built(conn)
 
     all_rows = []
     failed_races = []
@@ -38,6 +60,9 @@ def build_lap_flags():
         race_id = race['race_id']
         year = race['year']
         round_number = race['round']
+
+        if race_id in stored:
+            continue
 
         try:
             laps = pull_track_status_for_race(year, round_number)
@@ -61,9 +86,14 @@ def build_lap_flags():
         print(f"done {year} round {round_number}, race_id {race_id}")
 
     lap_flags = pd.DataFrame(all_rows)
-    lap_flags.to_sql('lap_flags', conn, if_exists='replace', index=False)
+    if len(lap_flags):
+        # append, never replace - a partial fetch must not be able to destroy what is
+        # already stored for every other race
+        lap_flags.to_sql('lap_flags', conn, if_exists='append', index=False)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_lap_flags_lookup ON lap_flags(race_id, driver_id, lap_number)")
     conn.commit()
+
+    total = pd.read_sql('SELECT COUNT(*) n FROM lap_flags', conn).n.iloc[0]
     conn.close()
 
     if failed_races:
@@ -71,12 +101,12 @@ def build_lap_flags():
     if unmatched_codes:
         print(f"driver codes with no match in dim_driver: {unmatched_codes}")
 
-    return lap_flags, failed_races, unmatched_codes
+    return lap_flags, failed_races, unmatched_codes, total
 
 
 if __name__ == '__main__':
-    lap_flags, failed_races, unmatched_codes = build_lap_flags()
-    print(f"lap_flags table built, {len(lap_flags)} rows")
+    lap_flags, failed_races, unmatched_codes, total = build_lap_flags()
+    print(f"lap_flags: {len(lap_flags)} new rows added, {total} rows total")
 
 
 # What this does: pulls per lap track status, clear, yellow, safety car, red flag,

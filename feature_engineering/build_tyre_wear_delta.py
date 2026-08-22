@@ -27,19 +27,27 @@ def load_degradation_wide(conn):
 
 
 def compute_tyre_wear_delta(pairs, degradation_wide):
+    # degradation_wide is a pivot, so it only has columns for compounds that actually
+    # appear in the data. Some are era specific (hypersoft was 2018 only), so treat the
+    # list above as the compounds we know about rather than ones guaranteed to be present.
+    present = [col for col in COMPOUND_COLUMNS if col in degradation_wide.columns]
+    missing = [col for col in COMPOUND_COLUMNS if col not in degradation_wide.columns]
+    if missing:
+        print(f"compounds absent from this dataset, skipping: {', '.join(missing)}")
+
     # joins each driver's own degradation numbers, then their teammate's, and takes the difference
     merged = pairs.merge(degradation_wide, on=['race_id', 'driver_id'], how='left')
 
     teammate_values = degradation_wide.rename(columns={'driver_id': 'teammate_driver_id'})
-    teammate_values = teammate_values.rename(columns={col: f"{col}_teammate" for col in COMPOUND_COLUMNS})
+    teammate_values = teammate_values.rename(columns={col: f"{col}_teammate" for col in present})
     merged = merged.merge(teammate_values, on=['race_id', 'teammate_driver_id'], how='left')
 
-    for col in COMPOUND_COLUMNS:
+    for col in present:
         delta_col = col.replace('degradation_rate_', 'tyre_wear_delta_')
         merged[delta_col] = merged[col] - merged[f"{col}_teammate"]
 
     keep_cols = ['race_id', 'driver_id', 'teammate_driver_id'] + [
-        col.replace('degradation_rate_', 'tyre_wear_delta_') for col in COMPOUND_COLUMNS
+        col.replace('degradation_rate_', 'tyre_wear_delta_') for col in present
     ]
     return merged[keep_cols]
 

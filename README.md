@@ -196,8 +196,7 @@ chatbot passes that caveat on rather than hiding it.
 ## Running it
 
 The chatbot needs a Google Gemini API key, on the free tier. Put it in
-`.streamlit/secrets.toml`, which is gitignored and never committed:
-
+`.streamlit/secrets.toml`,:
 ```
 GEMINI_API_KEY = "your-key-here"
 ```

@@ -612,6 +612,71 @@ def get_next_race() -> dict:
         conn.close()
 
 
+def predict_from_hypothetical_grid(race: str = None, year: int = None, use_sprint_grid: bool = True) -> dict:
+    """Answer a what-if: given a hypothetical starting grid, what would the podium and win chances be? By default it uses the sprint qualifying order for the next unraced sprint weekend, which answers questions like "what if the sprint grid carried over to the race". This is explicitly a hypothetical, not a prediction of the actual race, because the real grid is set by the Grand Prix's own qualifying session."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if race is None:
+            target = pd.read_sql("""
+                SELECT r.race_id, r.race_name, r.year, r.round FROM dim_race r
+                WHERE EXISTS (SELECT 1 FROM fact_sprint_qualifying q WHERE q.race_id = r.race_id)
+                  AND NOT EXISTS (SELECT 1 FROM fact_race_results fr WHERE fr.race_id = r.race_id)
+                ORDER BY r.race_date LIMIT 1
+            """, conn)
+            if len(target) == 0:
+                return {'found': False, 'reason': 'no upcoming race has a sprint qualifying order to borrow from'}
+            t = target.iloc[0]
+            race_id, race_name, race_year, rnd = int(t.race_id), t.race_name, int(t.year), int(t['round'])
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id, race_name, race_year, rnd = r['race_id'], r['race_name'], r['year'], r['round']
+
+        grid = pd.read_sql("""
+            SELECT sq.driver_id, sq.team_id, sq.sprint_quali_position AS assumed_position,
+                   d.driver_name, t.team_name
+            FROM fact_sprint_qualifying sq
+            JOIN dim_driver d ON sq.driver_id = d.driver_id
+            LEFT JOIN dim_team t ON sq.team_id = t.team_id
+            WHERE sq.race_id = ?
+            ORDER BY sq.sprint_quali_position
+        """, conn, params=(race_id,))
+        if len(grid) == 0:
+            return {'found': False, 'reason': f'no sprint qualifying order on record for {race_name} {race_year}'}
+
+        models = load_models()
+        out = []
+        for _, g in grid.iterrows():
+            X = prerace.build_prerace_row(conn, int(g.driver_id), int(g.team_id), race_id,
+                                           race_year, rnd, int(g.assumed_position))
+            # the Grand Prix qualifying session has not run, so its two derived features
+            # genuinely do not exist yet. Measured cost of leaving them out: about 0.007 AUC.
+            X['qualifying_pace_delta'] = float('nan')
+            X['qualifying_gap_to_pole'] = float('nan')
+            out.append({
+                'driver': g.driver_name, 'team': g.team_name,
+                'assumed_start': int(g.assumed_position),
+                'podium_chance': round(float(models['podium'].predict_proba(X)[:, 1][0]), 3),
+                'win_chance': round(float(models['win'].predict_proba(X)[:, 1][0]), 3),
+            })
+        out.sort(key=lambda e: e['podium_chance'], reverse=True)
+
+        return {
+            'found': True, 'race': race_name, 'year': race_year,
+            'confidence_tier': 'hypothetical',
+            'basis': 'sprint qualifying order, assumed to carry over to the Grand Prix',
+            'caveat': 'this is a what-if, not a prediction of the actual race. The real grid comes from the Grand Prix qualifying session, which has not run. Those qualifying features are therefore missing here, costing roughly 0.007 AUC against a full prediction.',
+            'hypothetical_predictions': out,
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
 def predict_upcoming_race(driver: str = None) -> dict:
     """Predict the podium and win chances for the next race that has already qualified but has not been run yet. This is a genuine forward-looking prediction, using the same trained models and the qualifying result that sets the grid. Pass a driver for just that driver, or leave it out for the full field ordered by podium chance. Only works once qualifying for that race has happened."""
     conn = sqlite3.connect(DB_PATH)

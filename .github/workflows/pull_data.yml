@@ -35,6 +35,13 @@ jobs:
       - name: Install data-pipeline dependencies
         run: pip install fastf1 pandas numpy scipy scikit-learn
 
+      - name: Create the FastF1 cache directory
+        # cache/ is gitignored (it reaches tens of GB locally), so a fresh checkout has
+        # no such directory and fastf1.Cache.enable_cache('cache') raises immediately.
+        # Every collection script calls that on import, so without this the whole
+        # workflow dies on its first line. A cold cache just means slower API reads.
+        run: mkdir -p cache
+
       - name: Pull schedule, results, laps, weather, qualifying, race control
         run: |
           python collecting_data/pull_schedule.py

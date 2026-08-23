@@ -597,10 +597,15 @@ def get_next_race() -> dict:
     conn = sqlite3.connect(DB_PATH)
     try:
         today = date.today().isoformat()
+        # "next" means the earliest race that has not been run, not simply the earliest
+        # date still ahead. A race_date >= today check keeps showing today's race as
+        # upcoming for the rest of its own race day, hours after it has finished.
+        # Having results is the real signal that a race is done.
         row = pd.read_sql("""
             SELECT dr.year, dr.round, dr.race_name, dr.race_date, dc.circuit_name, dc.country
             FROM dim_race dr JOIN dim_circuit dc ON dr.circuit_id = dc.circuit_id
             WHERE dr.race_date >= ?
+              AND NOT EXISTS (SELECT 1 FROM fact_race_results fr WHERE fr.race_id = dr.race_id)
             ORDER BY dr.race_date ASC LIMIT 1
         """, conn, params=(today,))
         if len(row) == 0:

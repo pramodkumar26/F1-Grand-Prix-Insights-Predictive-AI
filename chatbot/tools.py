@@ -336,20 +336,35 @@ def get_pit_stop_scorecard(year: int, team: str = None) -> dict:
         conn.close()
 
 
-def get_race_summary(race: str, year: int) -> dict:
-    """Look up the recorded facts about a single race: how many laps were completed, who won, who started on pole, how many drivers finished or retired, and whether it was a wet race. This is a measured fact from recorded data, not a prediction."""
+def get_race_summary(race: str = None, year: int = None) -> dict:
+    """Look up the recorded facts about a race: who won, who started on pole, how many drivers finished or retired, how many laps were run and whether it was wet. Give a race and year, or give nothing at all to get the most recent race that has actually been run, which is what to use for questions about the last race. This is a measured fact from recorded data, not a prediction."""
     conn = sqlite3.connect(DB_PATH)
     try:
-        r = resolve_race(race, year)
-        if r is None:
-            return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
-        if isinstance(r, dict) and r.get('ambiguous'):
-            return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
-        race_id = r['race_id']
+        if race is None:
+            latest = pd.read_sql("""
+                SELECT r.race_id, r.race_name, r.year, r.round FROM dim_race r
+                WHERE EXISTS (SELECT 1 FROM fact_race_results fr WHERE fr.race_id = r.race_id)
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn)
+            if len(latest) == 0:
+                return {'found': False, 'reason': 'no completed races on record'}
+            race_id = int(latest.race_id.iloc[0])
+            r = {'race_id': race_id, 'race_name': latest.race_name.iloc[0],
+                 'year': int(latest.year.iloc[0]), 'round': int(latest['round'].iloc[0])}
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id = r['race_id']
 
+        # Results and laps come from different sources and one can arrive without the
+        # other, so a missing lap count must not hide a race we do have the result for.
         laps_completed = _scalar(conn, "SELECT MAX(lap_number) FROM fact_laps WHERE race_id=?", (race_id,))
-        if laps_completed is None:
-            return {'found': False, 'reason': f"no lap data recorded for {r['race_name']} {r['year']}"}
+        has_result = _scalar(conn, "SELECT COUNT(*) FROM fact_race_results WHERE race_id=?", (race_id,))
+        if not has_result and laps_completed is None:
+            return {'found': False, 'reason': f"nothing recorded yet for {r['race_name']} {r['year']}, it may not have been run"}
 
         winner = pd.read_sql("""
             SELECT d.driver_name FROM fact_race_results fr
@@ -376,7 +391,7 @@ def get_race_summary(race: str, year: int) -> dict:
         return {
             'found': True, 'confidence_tier': 'measured_fact',
             'race': r['race_name'], 'year': r['year'], 'round': r['round'],
-            'laps_completed': int(laps_completed),
+            'laps_completed': int(laps_completed) if laps_completed is not None else None,
             'winner': winner.driver_name.iloc[0] if len(winner) else None,
             'pole_sitter': pole.driver_name.iloc[0] if len(pole) else None,
             'entrants': int(entrants), 'classified_finishers': int(finishers),

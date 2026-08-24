@@ -336,8 +336,65 @@ def get_pit_stop_scorecard(year: int, team: str = None) -> dict:
         conn.close()
 
 
+def get_race_results(race: str = None, year: int = None, driver: str = None) -> dict:
+    """Look up the full finishing order of a Grand Prix: every driver's finishing position, the grid they started from, points scored, status, and how many pit stops they made. Use this for the race result, the podium, the top five, where a driver finished, who retired, or how many pit stops someone made. Give a race and year, or give nothing at all to get the most recent race that has been run. Add a driver to narrow it to one. This is a measured fact, not a prediction."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if race is None:
+            latest = pd.read_sql("""
+                SELECT r.race_id, r.race_name, r.year FROM dim_race r
+                WHERE EXISTS (SELECT 1 FROM fact_race_results fr WHERE fr.race_id = r.race_id)
+                ORDER BY r.race_date DESC LIMIT 1
+            """, conn)
+            if len(latest) == 0:
+                return {'found': False, 'reason': 'no completed races on record'}
+            race_id = int(latest.race_id.iloc[0])
+            race_name, race_year = latest.race_name.iloc[0], int(latest.year.iloc[0])
+        else:
+            r = resolve_race(race, year)
+            if r is None:
+                return {'found': False, 'reason': f'no race matching "{race}" ({year}) in the dataset'}
+            if isinstance(r, dict) and r.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': r['candidates']}
+            race_id, race_name, race_year = r['race_id'], r['race_name'], r['year']
+
+        # a driver running N stints made N-1 pit stops
+        rows = pd.read_sql("""
+            SELECT fr.finish_position, d.driver_name, t.team_name,
+                   fr.grid_position, fr.points, fr.status,
+                   (SELECT MAX(l.stint_number) - 1 FROM fact_laps l
+                    WHERE l.race_id = fr.race_id AND l.driver_id = fr.driver_id) AS pit_stops
+            FROM fact_race_results fr
+            JOIN dim_driver d ON fr.driver_id = d.driver_id
+            LEFT JOIN dim_team t ON fr.team_id = t.team_id
+            WHERE fr.race_id = ?
+            ORDER BY CASE WHEN fr.finish_position IS NULL THEN 1 ELSE 0 END, fr.finish_position
+        """, conn, params=(race_id,))
+        if len(rows) == 0:
+            return {'found': False, 'reason': f"no results on record for {race_name} {race_year}, it may not have been run yet"}
+
+        if driver:
+            d = resolve_driver(driver)
+            if d is None:
+                return {'found': False, 'reason': f'no driver matching "{driver}" in the dataset'}
+            if isinstance(d, dict) and d.get('ambiguous'):
+                return {'found': False, 'ambiguous': True, 'candidates': d['candidates']}
+            rows = rows[rows.driver_name == d['driver_name']]
+            if len(rows) == 0:
+                return {'found': False, 'reason': f"{d['driver_name']} has no result for {race_name} {race_year}"}
+
+        return {
+            'found': True, 'race': race_name, 'year': race_year,
+            'confidence_tier': 'measured_fact', 'results': _records(rows),
+        }
+    except Exception as e:
+        return {'found': False, 'reason': f'lookup failed: {e}'}
+    finally:
+        conn.close()
+
+
 def get_race_summary(race: str = None, year: int = None) -> dict:
-    """Look up the recorded facts about a race: who won, who started on pole, how many drivers finished or retired, how many laps were run and whether it was wet. Give a race and year, or give nothing at all to get the most recent race that has actually been run, which is what to use for questions about the last race. This is a measured fact from recorded data, not a prediction."""
+    """Look up the recorded facts about a race: who won, who started on pole, who set the fastest lap and what time it was, how many drivers finished or retired, how many laps were run, and the weather including air and track temperature and whether there was rain. Use this for fastest lap and weather questions. Give a race and year, or give nothing at all to get the most recent race that has actually been run, which is what to use for questions about the last race. This is a measured fact from recorded data, not a prediction."""
     conn = sqlite3.connect(DB_PATH)
     try:
         if race is None:
@@ -381,12 +438,31 @@ def get_race_summary(race: str = None, year: int = None) -> dict:
             (race_id,))
         entrants = _scalar(conn, "SELECT COUNT(*) FROM fact_race_results WHERE race_id=?", (race_id,))
         is_wet = _scalar(conn, "SELECT is_wet_race FROM race_wet_flag WHERE race_id=?", (race_id,))
+        weather = pd.read_sql("""
+            SELECT ROUND(AVG(air_temp), 1) AS air_temp_c,
+                   ROUND(AVG(track_temp), 1) AS track_temp_c,
+                   ROUND(AVG(humidity), 1) AS humidity_pct,
+                   ROUND(AVG(wind_speed), 1) AS wind_speed,
+                   MAX(rainfall) AS any_rainfall
+            FROM fact_weather WHERE race_id = ?
+        """, conn, params=(race_id,))
         fastest = pd.read_sql("""
             SELECT d.driver_name, fr.fastest_lap_time FROM fact_race_results fr
             JOIN dim_driver d ON fr.driver_id = d.driver_id
             WHERE fr.race_id=? AND fr.fastest_lap_time IS NOT NULL
             ORDER BY fr.fastest_lap_time LIMIT 1
         """, conn, params=(race_id,))
+        if len(fastest) == 0:
+            # FastF1 leaves fastest_lap_time empty on freshly published races, but the
+            # lap times themselves are there, so derive it rather than report nothing
+            fastest = pd.read_sql("""
+                SELECT d.driver_name, MIN(l.lap_time) AS fastest_lap_time
+                FROM fact_laps l
+                JOIN dim_driver d ON l.driver_id = d.driver_id
+                WHERE l.race_id=? AND l.lap_time IS NOT NULL
+                GROUP BY l.driver_id
+                ORDER BY fastest_lap_time LIMIT 1
+            """, conn, params=(race_id,))
 
         return {
             'found': True, 'confidence_tier': 'measured_fact',
@@ -397,6 +473,7 @@ def get_race_summary(race: str = None, year: int = None) -> dict:
             'entrants': int(entrants), 'classified_finishers': int(finishers),
             'retirements': int(entrants) - int(finishers),
             'wet_race': bool(is_wet) if is_wet is not None else None,
+            'weather': _row(weather.iloc[0]) if len(weather) and weather.air_temp_c.iloc[0] is not None else None,
             'fastest_lap_driver': fastest.driver_name.iloc[0] if len(fastest) else None,
             'fastest_lap_seconds': round(float(fastest.fastest_lap_time.iloc[0]), 3) if len(fastest) else None,
         }

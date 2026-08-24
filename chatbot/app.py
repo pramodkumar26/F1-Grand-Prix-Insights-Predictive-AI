@@ -294,7 +294,7 @@ def get_chat():
             tools.predict_podium, tools.predict_win, tools.predict_points,
             tools.explain_strategy_shift, tools.estimate_overtakes,
             tools.get_teammate_scorecard, tools.get_pit_stop_scorecard, tools.get_sprint_result,
-            tools.get_qualifying_results, tools.get_sprint_qualifying,
+            tools.get_race_results, tools.get_qualifying_results, tools.get_sprint_qualifying,
             tools.predict_upcoming_race,
             tools.predict_from_hypothetical_grid,
             tools.get_next_race, tools.get_championship_standings, tools.get_constructor_standings,
@@ -336,6 +336,21 @@ def start_with(question=None):
     st.rerun()
 
 
+@st.cache_data(ttl=600)
+def dataset_stats():
+    """Read the headline numbers from the database rather than hardcoding them, so they
+    grow on their own as each race weekend is pulled in."""
+    conn = sqlite3.connect('f1.db')
+    try:
+        seasons = conn.execute('SELECT COUNT(DISTINCT year) FROM dim_race').fetchone()[0]
+        races = conn.execute('SELECT COUNT(DISTINCT race_id) FROM fact_race_results').fetchone()[0]
+        laps = conn.execute('SELECT COUNT(*) FROM fact_laps').fetchone()[0]
+    finally:
+        conn.close()
+    laps_label = f'{laps / 1000:.0f}K' if laps < 1_000_000 else f'{laps / 1_000_000:.1f}M'
+    return seasons, races, laps_label
+
+
 def render_landing():
     hero, side = st.columns([3, 2], gap='large')
 
@@ -375,14 +390,16 @@ def render_landing():
                 start_with(question)
 
     st.markdown('<div class="rule"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="stat-row">
-        <div><div class="stat-num">9</div><div class="stat-label">Seasons</div></div>
-        <div><div class="stat-num">184</div><div class="stat-label">Races</div></div>
-        <div><div class="stat-num">5</div><div class="stat-label">Trained models</div></div>
-        <div><div class="stat-num">201K</div><div class="stat-label">Laps analysed</div></div>
-    </div>
-    """, unsafe_allow_html=True)
+    seasons, races, laps = dataset_stats()
+    st.markdown(
+        '<div class="stat-row">'
+        f'<div><div class="stat-num">{seasons}</div><div class="stat-label">Seasons</div></div>'
+        f'<div><div class="stat-num">{races}</div><div class="stat-label">Races</div></div>'
+        '<div><div class="stat-num">5</div><div class="stat-label">Trained models</div></div>'
+        f'<div><div class="stat-num">{laps}</div><div class="stat-label">Laps analysed</div></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 CHAT_STARTERS = [

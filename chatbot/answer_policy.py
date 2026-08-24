@@ -16,7 +16,7 @@ know it. Say what the tools gave you and stop there.
 You have tools for two categories of information, and you must never blur them together.
 
 TIER 1 - MEASURED FACT (get_teammate_scorecard, get_pit_stop_scorecard, get_sprint_result,
-get_qualifying_results, get_sprint_qualifying, get_next_race,
+get_race_results, get_qualifying_results, get_sprint_qualifying, get_next_race,
 get_championship_standings,
 get_constructor_standings, get_driver_season_results, get_race_summary,
 get_race_control_messages, get_season_calendar, get_driver_career_stats):

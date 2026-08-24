@@ -64,12 +64,6 @@ jobs:
           python collecting_data/load_qualifying.py
           python collecting_data/load_race_control.py
           python collecting_data/load_jolpica_sprint_results.py
-          # FastF1 reads F1's live timing service, which does not answer reliably from
-          # datacenter IPs - a finished race can come back as "not loaded yet" on a runner
-          # while loading fine locally. Jolpica is a plain REST API and works from anywhere,
-          # so it backfills any race result FastF1 could not fetch. It never overwrites
-          # what FastF1 already provided.
-          python collecting_data/load_jolpica_race_results.py
           # sprint qualifying sets the sprint grid and runs before the sprint itself,
           # so this is the one source that is current mid-weekend rather than after it
           python collecting_data/load_sprint_qualifying.py

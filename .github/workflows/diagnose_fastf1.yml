@@ -1,0 +1,53 @@
+name: Diagnose FastF1 from a runner
+
+# One-off diagnostic. Every scheduled pull reports "results inserted: 0" and the finished
+# Dutch GP came back as "Failed to load timing data" on a runner while loading fine from
+# a laptop. That points at F1's timing service refusing datacenter IPs, but one race in a
+# 35 minute window is not enough evidence to redesign the pipeline around. This fetches a
+# few sessions with a cold cache and reports plainly whether the runner can reach them.
+# It writes nothing and commits nothing. Delete once it has answered the question.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install FastF1
+        run: pip install fastf1 pandas
+
+      - name: Try to load sessions with a cold cache
+        run: |
+          mkdir -p diagnose_cache
+          python - <<'PY'
+          import warnings
+          import fastf1
+          warnings.filterwarnings('ignore')
+          fastf1.Cache.enable_cache('diagnose_cache')
+
+          # a mix: the race that failed, an older race that has been archived for years,
+          # and a qualifying session. If old ones work and new ones do not, it is a
+          # publication lag. If nothing works, the runner is being refused outright.
+          cases = [
+              ('2026 Dutch race (the one that failed)', 2026, 12, 'R'),
+              ('2026 Dutch qualifying',                 2026, 12, 'Q'),
+              ('2024 Miami race (long archived)',       2024,  6, 'R'),
+              ('2023 Monza race (long archived)',       2023, 14, 'R'),
+          ]
+          for label, year, rnd, kind in cases:
+              try:
+                  s = fastf1.get_session(year, rnd, kind)
+                  s.load(telemetry=False, weather=False, messages=False)
+                  n = len(s.results) if s.results is not None else 0
+                  laps = len(s.laps) if s.laps is not None else 0
+                  print(f'OK    {label}: {n} results, {laps} laps', flush=True)
+              except Exception as e:
+                  print(f'FAIL  {label}: {str(e)[:110]}', flush=True)
+          PY
